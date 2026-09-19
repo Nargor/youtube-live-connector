@@ -7,7 +7,8 @@ const {
   parseSuperChat,
   parseSuperSticker,
   parseMembership,
-  parseGiftMemberships
+  parseGiftMemberships,
+  parseJewelsGift
 } = require('./parsers/giftParser');
 const { parseInitialStreamInfo, parseUpdatedMetadataActions } = require('./parsers/metadataParser');
 const { parseViewerCount, parsePrice, parseBadges, extractRunText } = require('./utils/helpers');
@@ -25,6 +26,7 @@ YouTubeLiveConnector.parseSuperChat = parseSuperChat;
 YouTubeLiveConnector.parseSuperSticker = parseSuperSticker;
 YouTubeLiveConnector.parseMembership = parseMembership;
 YouTubeLiveConnector.parseGiftMemberships = parseGiftMemberships;
+YouTubeLiveConnector.parseJewelsGift = parseJewelsGift;
 YouTubeLiveConnector.parseInitialStreamInfo = parseInitialStreamInfo;
 YouTubeLiveConnector.parseUpdatedMetadataActions = parseUpdatedMetadataActions;
 YouTubeLiveConnector.parseViewerCount = parseViewerCount;

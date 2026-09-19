@@ -8,7 +8,8 @@ const {
   parseSuperChat,
   parseSuperSticker,
   parseMembership,
-  parseGiftMemberships
+  parseGiftMemberships,
+  parseJewelsGift
 } = require('./parsers/giftParser');
 const {
   parseInitialStreamInfo,
@@ -254,12 +255,24 @@ class YouTubeLiveConnector extends EventEmitter {
     for (const action of actions) {
       this.emit('raw', action);
 
-      const addChatItem = action.addChatItemAction || action.addLiveChatItemToGroupAction;
-      if (!addChatItem || !addChatItem.item) continue;
+      const item = action.addChatItemAction?.item ||
+                   action.addLiveChatTickerItemAction?.item ||
+                   action.addLiveChatItemToGroupAction?.item;
+      if (!item) continue;
 
-      const item = addChatItem.item;
+      // 1. YouTube Jewels Gift (giftMessageViewModel) - Interactive TikTok-style gifts
+      if (item.giftMessageViewModel) {
+        const jewelsData = parseJewelsGift(item.giftMessageViewModel);
+        if (jewelsData && !this._isDuplicate(jewelsData.id)) {
+          // Emit unified gift event (so TikTok Live Connector users receive it)
+          this.emit('gift', jewelsData);
+          // Emit specific jewelsGift event
+          this.emit('jewelsGift', jewelsData);
+        }
+        continue;
+      }
 
-      // 1. Standard text chat
+      // 2. Standard text chat
       if (item.liveChatTextMessageRenderer) {
         const chatData = parseChatMessage(item.liveChatTextMessageRenderer);
         if (chatData && !this._isDuplicate(chatData.id)) {

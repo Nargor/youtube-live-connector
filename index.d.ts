@@ -96,7 +96,22 @@ export interface MembershipGiftPurchase {
   raw: any;
 }
 
-export type GiftEvent = SuperChatGift | SuperStickerGift | MembershipGift | MembershipGiftPurchase;
+export interface JewelsGift {
+  type: 'jewels_gift';
+  id: string;
+  author: ChatAuthor;
+  giftName: string;
+  actionText: string;
+  giftImage: {
+    url: string;
+    alt: string;
+  };
+  timestamp: Date;
+  timestampUsec: number;
+  raw: any;
+}
+
+export type GiftEvent = SuperChatGift | SuperStickerGift | MembershipGift | MembershipGiftPurchase | JewelsGift;
 
 export interface ViewersData {
   viewerCount: number;
@@ -144,6 +159,7 @@ export declare class YouTubeLiveConnector extends EventEmitter {
   on(event: 'supersticker', listener: (sticker: SuperStickerGift) => void): this;
   on(event: 'member', listener: (member: MembershipGift) => void): this;
   on(event: 'memberGift', listener: (memberGift: MembershipGiftPurchase) => void): this;
+  on(event: 'jewelsGift', listener: (jewelsGift: JewelsGift) => void): this;
   on(event: 'viewers', listener: (data: ViewersData) => void): this;
   on(event: 'roomUser', listener: (data: ViewersData) => void): this;
   on(event: 'title', listener: (data: { title: string }) => void): this;
@@ -160,6 +176,7 @@ export declare function parseSuperChat(renderer: any): SuperChatGift | null;
 export declare function parseSuperSticker(renderer: any): SuperStickerGift | null;
 export declare function parseMembership(renderer: any): MembershipGift | null;
 export declare function parseGiftMemberships(renderer: any): MembershipGiftPurchase | null;
+export declare function parseJewelsGift(viewModel: any): JewelsGift | null;
 export declare function parseInitialStreamInfo(ytInitialData: any, videoId: string): StreamInfo;
 export declare function parseUpdatedMetadataActions(actions: any[]): any;
 export declare function parseViewerCount(str: string): number;

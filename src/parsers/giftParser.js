@@ -197,9 +197,75 @@ function parseGiftMemberships(renderer) {
   };
 }
 
+/**
+ * Parse YouTube Jewels Gift (giftMessageViewModel)
+ * YouTube's interactive live gifts feature (similar to TikTok live gifts)
+ * @param {object} viewModel 
+ * @returns {object}
+ */
+function parseJewelsGift(viewModel) {
+  if (!viewModel) return null;
+
+  const id = viewModel.id || '';
+  const authorName = viewModel.authorName?.content?.trim() || '';
+
+  // Avatar image
+  const avatarSources = viewModel.authorAvatar?.avatarViewModel?.image?.sources || [];
+  const profilePictureUrl = avatarSources.length > 0 ? avatarSources[avatarSources.length - 1].url : '';
+
+  // Gift Image
+  const giftSources = viewModel.giftImage?.sources || [];
+  let giftImageUrl = giftSources.length > 0 ? giftSources[giftSources.length - 1].url : '';
+  if (giftImageUrl.startsWith('//')) {
+    giftImageUrl = `https:${giftImageUrl}`;
+  }
+
+  // Action text e.g. "sent Hiding"
+  const actionText = viewModel.text?.content || '';
+
+  // Extract gift name (e.g. "sent Hiding" -> "Hiding")
+  let giftName = '';
+  if (actionText) {
+    giftName = actionText.replace(/^sent\s+/i, '').trim();
+  }
+  if (!giftName && viewModel.giftImageA11yLabel) {
+    const parts = viewModel.giftImageA11yLabel.split(',');
+    giftName = parts[parts.length - 1].trim();
+  }
+
+  const timestampUsec = Date.now() * 1000;
+  const timestamp = new Date();
+
+  return {
+    type: 'jewels_gift',
+    id,
+    author: {
+      name: authorName,
+      channelId: '',
+      profilePictureUrl,
+      isOwner: false,
+      isModerator: false,
+      isMember: false,
+      isVerified: false,
+      badges: []
+    },
+    giftName,
+    actionText,
+    giftImage: {
+      url: giftImageUrl,
+      alt: viewModel.giftImageA11yLabel || giftName
+    },
+    timestamp,
+    timestampUsec,
+    raw: viewModel
+  };
+}
+
 module.exports = {
   parseSuperChat,
   parseSuperSticker,
   parseMembership,
-  parseGiftMemberships
+  parseGiftMemberships,
+  parseJewelsGift
 };
+

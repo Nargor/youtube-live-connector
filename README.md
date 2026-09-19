@@ -141,8 +141,14 @@ Event รวมสำหรับของขวัญ/การสนับส�
 4. `type: 'membership_gift'`:
    - `giftCount`: จำนวนสมาชิกที่แจก (e.g. `5`)
    - `headerText`: e.g. `"Gifted 5 channel memberships"`
+5. `type: 'jewels_gift'` (YouTube Jewels Gifts - ของขวัญแอนิเมชันสไตล์ TikTok):
+   - `giftName`: ชื่อของขวัญ (เช่น `"Hiding"`, `"Applause"`)
+   - `actionText`: ข้อความการกระทำ (เช่น `"sent Hiding"`)
+   - `giftImage.url`: รูปของขวัญความละเอียดสูง
+   - `giftImage.alt`: คำอธิบายรูปของขวัญ
 
 > 💡 **นอกจากนี้ยังสามารถแยกฟังเฉพาะ Event ย่อยได้ตามต้องการ**:
+> - `live.on('jewelsGift', data => ...)` (ของขวัญ Jewels Gifts)
 > - `live.on('superchat', data => ...)`
 > - `live.on('supersticker', data => ...)`
 > - `live.on('member', data => ...)`

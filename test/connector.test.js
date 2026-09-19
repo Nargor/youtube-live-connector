@@ -42,6 +42,7 @@ test('YouTubeLiveConnector - emits chat and gift events on _processActions', () 
   c.on('chat', (data) => emitted.push({ event: 'chat', data }));
   c.on('gift', (data) => emitted.push({ event: 'gift', data }));
   c.on('superchat', (data) => emitted.push({ event: 'superchat', data }));
+  c.on('jewelsGift', (data) => emitted.push({ event: 'jewelsGift', data }));
 
   const mockActions = [
     {
@@ -66,12 +67,24 @@ test('YouTubeLiveConnector - emits chat and gift events on _processActions', () 
           }
         }
       }
+    },
+    {
+      addChatItemAction: {
+        item: {
+          giftMessageViewModel: {
+            id: 'jg_1',
+            text: { content: 'sent Hiding' },
+            authorName: { content: '@Viewer123' },
+            giftImageA11yLabel: '@Viewer123 sent a gift, Hiding'
+          }
+        }
+      }
     }
   ];
 
   c._processActions(mockActions);
 
-  assert.equal(emitted.length, 3);
+  assert.equal(emitted.length, 5);
   assert.equal(emitted[0].event, 'chat');
   assert.equal(emitted[0].data.message, 'Hello!');
 
@@ -80,6 +93,13 @@ test('YouTubeLiveConnector - emits chat and gift events on _processActions', () 
 
   assert.equal(emitted[2].event, 'superchat');
   assert.equal(emitted[2].data.amount, 200);
+
+  assert.equal(emitted[3].event, 'gift');
+  assert.equal(emitted[3].data.type, 'jewels_gift');
+  assert.equal(emitted[3].data.giftName, 'Hiding');
+
+  assert.equal(emitted[4].event, 'jewelsGift');
+  assert.equal(emitted[4].data.giftName, 'Hiding');
 });
 
 test('YouTubeLiveConnector - emits viewers and roomUser alias', () => {

@@ -7,7 +7,8 @@ const {
   parseSuperChat,
   parseSuperSticker,
   parseMembership,
-  parseGiftMemberships
+  parseGiftMemberships,
+  parseJewelsGift
 } = require('../src/parsers/giftParser');
 const { parseViewerCount, parsePrice } = require('../src/utils/helpers');
 
@@ -148,3 +149,39 @@ test('parseGiftMemberships - correctly parses sponsorships gift purchase', () =>
   assert.equal(parsed.giftCount, 5);
   assert.equal(parsed.headerText, 'Gifted 5 channel memberships');
 });
+
+test('parseJewelsGift - correctly parses giftMessageViewModel (YouTube Jewels Gifts)', () => {
+  const mockViewModel = {
+    id: 'ChwKGkNMYkFpOWFSaTVZREZZWEN3Z1FkMGdJYVR3',
+    text: { content: 'sent Hiding' },
+    authorName: { content: '@DitsarutSukkong-s7x ' },
+    authorAvatar: {
+      avatarViewModel: {
+        image: {
+          sources: [
+            { url: 'https://yt4.ggpht.com/avatar_32.jpg', width: 32, height: 32 },
+            { url: 'https://yt4.ggpht.com/avatar_64.jpg', width: 64, height: 64 }
+          ]
+        }
+      }
+    },
+    giftImage: {
+      sources: [
+        { url: '//www.gstatic.com/youtube/img/pdg/gift/assets/hiding.png=w480-h480', width: 480, height: 480 },
+        { url: '//www.gstatic.com/youtube/img/pdg/gift/assets/hiding.png=w640-h640', width: 640, height: 640 }
+      ]
+    },
+    giftImageA11yLabel: '@DitsarutSukkong-s7x sent a gift, Hiding'
+  };
+
+  const parsed = parseJewelsGift(mockViewModel);
+  assert.equal(parsed.type, 'jewels_gift');
+  assert.equal(parsed.id, 'ChwKGkNMYkFpOWFSaTVZREZZWEN3Z1FkMGdJYVR3');
+  assert.equal(parsed.author.name, '@DitsarutSukkong-s7x');
+  assert.equal(parsed.author.profilePictureUrl, 'https://yt4.ggpht.com/avatar_64.jpg');
+  assert.equal(parsed.giftName, 'Hiding');
+  assert.equal(parsed.actionText, 'sent Hiding');
+  assert.equal(parsed.giftImage.url, 'https://www.gstatic.com/youtube/img/pdg/gift/assets/hiding.png=w640-h640');
+  assert.equal(parsed.giftImage.alt, '@DitsarutSukkong-s7x sent a gift, Hiding');
+});
+

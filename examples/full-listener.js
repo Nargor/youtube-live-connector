@@ -62,8 +62,17 @@ live.on('gift', (gift) => {
   } else if (gift.type === 'membership_gift') {
     console.log(` Details: ${gift.headerText}`);
     console.log(` Count:   ${gift.giftCount} memberships`);
+  } else if (gift.type === 'jewels_gift') {
+    console.log(` Action:  ${gift.actionText}`);
+    console.log(` Gift:    ${gift.giftName}`);
+    if (gift.giftImage?.url) console.log(` Image:   ${gift.giftImage.url}`);
   }
   console.log('=======================================================\n');
+});
+
+// Event: jewelsGift (Specific event for YouTube Jewels Gifts)
+live.on('jewelsGift', (gift) => {
+  // You can also handle Jewels Gifts specifically here if desired
 });
 
 // Event: superchat (Specific event for Super Chats)

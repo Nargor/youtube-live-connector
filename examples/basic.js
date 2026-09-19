@@ -30,6 +30,8 @@ live.on('gift', (gift) => {
     console.log(`[GIFT - Membership] ${gift.author.name} joined/renewed: ${gift.headerText}`);
   } else if (gift.type === 'membership_gift') {
     console.log(`[GIFT - Gift Memberships] ${gift.author.name} gifted ${gift.giftCount} memberships!`);
+  } else if (gift.type === 'jewels_gift') {
+    console.log(`[GIFT - Jewels Gift] ${gift.author.name} ${gift.actionText} (Gift: ${gift.giftName})`);
   }
 });
 
