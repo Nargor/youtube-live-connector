@@ -8,7 +8,8 @@ const {
   parseSuperSticker,
   parseMembership,
   parseGiftMemberships,
-  parseJewelsGift
+  parseJewelsGift,
+  parseGiftRedemption
 } = require('../src/parsers/giftParser');
 const { parseViewerCount, parsePrice } = require('../src/utils/helpers');
 
@@ -184,4 +185,26 @@ test('parseJewelsGift - correctly parses giftMessageViewModel (YouTube Jewels Gi
   assert.equal(parsed.giftImage.url, 'https://www.gstatic.com/youtube/img/pdg/gift/assets/hiding.png=w640-h640');
   assert.equal(parsed.giftImage.alt, '@DitsarutSukkong-s7x sent a gift, Hiding');
 });
+
+test('parseGiftRedemption - correctly parses liveChatSponsorshipsGiftRedemptionAnnouncementRenderer', () => {
+  const mockRenderer = {
+    id: 'rd_303',
+    timestampUsec: '1700000000000000',
+    authorName: { simpleText: 'LuckyViewer' },
+    authorPhoto: { thumbnails: [{ url: 'https://example.com/lucky.jpg' }] },
+    message: {
+      runs: [
+        { text: 'was gifted a membership by ' },
+        { text: 'GenerousDonor', bold: true }
+      ]
+    }
+  };
+
+  const parsed = parseGiftRedemption(mockRenderer);
+  assert.equal(parsed.type, 'membership_redeem');
+  assert.equal(parsed.author.name, 'LuckyViewer');
+  assert.equal(parsed.gifterName, 'GenerousDonor');
+  assert.equal(parsed.author.isMember, true);
+});
+
 

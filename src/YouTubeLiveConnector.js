@@ -9,7 +9,8 @@ const {
   parseSuperSticker,
   parseMembership,
   parseGiftMemberships,
-  parseJewelsGift
+  parseJewelsGift,
+  parseGiftRedemption
 } = require('./parsers/giftParser');
 const {
   parseInitialStreamInfo,
@@ -329,7 +330,19 @@ class YouTubeLiveConnector extends EventEmitter {
         continue;
       }
 
-      // 6. Viewer Engagement (e.g. pinned message, polls)
+      // 6. Gift Membership Redeemed (Someone received a gifted membership)
+      if (item.liveChatSponsorshipsGiftRedemptionAnnouncementRenderer) {
+        const redeemData = parseGiftRedemption(item.liveChatSponsorshipsGiftRedemptionAnnouncementRenderer);
+        if (redeemData && !this._isDuplicate(redeemData.id)) {
+          // Emit unified gift event
+          this.emit('gift', redeemData);
+          // Emit specific memberRedeem event
+          this.emit('memberRedeem', redeemData);
+        }
+        continue;
+      }
+
+      // 7. Viewer Engagement (e.g. pinned message, polls)
       if (action.showLiveChatActionPanelAction) {
         this.emit('actionPanel', action.showLiveChatActionPanelAction);
       }

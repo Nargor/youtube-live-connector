@@ -23,6 +23,7 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "prepublishOnly": "npm test",
+    "release": "node scripts/release.js",
     "example:basic": "node examples/basic.js",
     "example:full": "node examples/full-listener.js"
   },

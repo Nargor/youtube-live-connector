@@ -261,11 +261,57 @@ function parseJewelsGift(viewModel) {
   };
 }
 
+/**
+ * Parse Gift Membership Redemption (liveChatSponsorshipsGiftRedemptionAnnouncementRenderer)
+ * @param {object} renderer
+ * @returns {object}
+ */
+function parseGiftRedemption(renderer) {
+  if (!renderer) return null;
+
+  const id = renderer.id || '';
+  const authorName = renderer.authorName?.simpleText || '';
+  const thumbnails = renderer.authorPhoto?.thumbnails || [];
+  const profilePictureUrl = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : '';
+  const badgeInfo = parseBadges(renderer.authorBadges);
+
+  const { text: message } = extractRunText(renderer.message);
+
+  // Extract gifter name if present e.g. "was gifted a membership by UserX"
+  const gifterMatch = message.match(/by\s+(.+)$/i);
+  const gifterName = gifterMatch ? gifterMatch[1].trim() : '';
+
+  const timestampUsec = renderer.timestampUsec ? parseInt(renderer.timestampUsec, 10) : Date.now() * 1000;
+  const timestamp = new Date(Math.floor(timestampUsec / 1000));
+
+  return {
+    type: 'membership_redeem',
+    id,
+    author: {
+      name: authorName,
+      channelId: '',
+      profilePictureUrl,
+      isOwner: badgeInfo.isOwner,
+      isModerator: badgeInfo.isModerator,
+      isMember: true,
+      isVerified: badgeInfo.isVerified,
+      badges: badgeInfo.badges
+    },
+    gifterName,
+    message,
+    timestamp,
+    timestampUsec,
+    raw: renderer
+  };
+}
+
 module.exports = {
   parseSuperChat,
   parseSuperSticker,
   parseMembership,
   parseGiftMemberships,
-  parseJewelsGift
+  parseJewelsGift,
+  parseGiftRedemption
 };
+
 

@@ -6,7 +6,8 @@ import {
   parseSuperSticker,
   parseMembership,
   parseGiftMemberships,
-  parseJewelsGift
+  parseJewelsGift,
+  parseGiftRedemption
 } from './parsers/giftParser.js';
 import { parseInitialStreamInfo, parseUpdatedMetadataActions } from './parsers/metadataParser.js';
 import { parseViewerCount, parsePrice, parseBadges, extractRunText } from './utils/helpers.js';
@@ -21,6 +22,7 @@ export {
   parseMembership,
   parseGiftMemberships,
   parseJewelsGift,
+  parseGiftRedemption,
   parseInitialStreamInfo,
   parseUpdatedMetadataActions,
   parseViewerCount,
