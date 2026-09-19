@@ -234,7 +234,7 @@ class YouTubeLiveConnector extends EventEmitter {
   }
 
   /**
-   * Emit viewer count and tiktok-like roomUser event
+   * Emit viewer count and roomUser event
    * @private
    */
   _emitViewerCount(viewerCount, viewerCountDisplay) {
@@ -244,7 +244,7 @@ class YouTubeLiveConnector extends EventEmitter {
       timestamp: new Date()
     };
     this.emit('viewers', data);
-    // Alias event for 100% familiarity with tiktok-live-connector
+    // Alias event for room viewers
     this.emit('roomUser', data);
   }
 
@@ -261,11 +261,11 @@ class YouTubeLiveConnector extends EventEmitter {
                    action.addLiveChatItemToGroupAction?.item;
       if (!item) continue;
 
-      // 1. YouTube Jewels Gift (giftMessageViewModel) - Interactive TikTok-style gifts
+      // 1. YouTube Jewels Gift (giftMessageViewModel) - Interactive live gifts
       if (item.giftMessageViewModel) {
         const jewelsData = parseJewelsGift(item.giftMessageViewModel);
         if (jewelsData && !this._isDuplicate(jewelsData.id)) {
-          // Emit unified gift event (so TikTok Live Connector users receive it)
+          // Emit unified gift event
           this.emit('gift', jewelsData);
           // Emit specific jewelsGift event
           this.emit('jewelsGift', jewelsData);

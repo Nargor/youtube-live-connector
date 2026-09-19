@@ -3,7 +3,7 @@
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**youtube-live-connector** เป็นไลบรารี Node.js สำหรับเชื่อมต่อกับ **YouTube Live** เพื่อดึงข้อมูลแชท/คอมเมนต์, ของขวัญ (Super Chat, Super Sticker, สมาชิก/Memberships), และจำนวนคนดูสดแบบ Real-time โดยออกแบบโครงสร้าง Event-driven ให้ใช้งานง่ายเหมือน [tiktok-live-connector](https://github.com/zerodytrash/TikTok-Live-Connector)
+**youtube-live-connector** เป็นไลบรารี Node.js สำหรับเชื่อมต่อกับ **YouTube Live** เพื่อดึงข้อมูลแชท/คอมเมนต์, ของขวัญ (Super Chat, Super Sticker, สมาชิก/Memberships, Jewels Gifts), และจำนวนคนดูสดแบบ Real-time ด้วยโครงสร้าง Event-driven ที่ใช้งานง่าย
 
 > 💡 **จุดเด่น**: ไม่ต้องใช้ Google Cloud Console API Key (Keyless) และไม่มีปัญหาโควต้า API Quota รายวันเต็ม!
 
@@ -141,7 +141,7 @@ Event รวมสำหรับของขวัญ/การสนับส�
 4. `type: 'membership_gift'`:
    - `giftCount`: จำนวนสมาชิกที่แจก (e.g. `5`)
    - `headerText`: e.g. `"Gifted 5 channel memberships"`
-5. `type: 'jewels_gift'` (YouTube Jewels Gifts - ของขวัญแอนิเมชันสไตล์ TikTok):
+5. `type: 'jewels_gift'` (YouTube Jewels Gifts - ของขวัญแอนิเมชัน):
    - `giftName`: ชื่อของขวัญ (เช่น `"Hiding"`, `"Applause"`)
    - `actionText`: ข้อความการกระทำ (เช่น `"sent Hiding"`)
    - `giftImage.url`: รูปของขวัญความละเอียดสูง
@@ -155,7 +155,7 @@ Event รวมสำหรับของขวัญ/การสนับส�
 > - `live.on('memberGift', data => ...)`
 
 ### Event: `viewers` (หรือ `roomUser`)
-ส่งออกทุกครั้งที่จำนวนคนดูสดมีการเปลี่ยนแปลง (มี alias `roomUser` เพื่อให้เข้ากันได้กับ tiktok-live-connector)
+ส่งออกทุกครั้งที่จำนวนคนดูสดมีการเปลี่ยนแปลง (มี alias `roomUser` สำหรับห้องสตรีม)
 ```javascript
 live.on('viewers', (data) => {
   console.log(data.viewerCount);        // 3125

@@ -199,7 +199,7 @@ function parseGiftMemberships(renderer) {
 
 /**
  * Parse YouTube Jewels Gift (giftMessageViewModel)
- * YouTube's interactive live gifts feature (similar to TikTok live gifts)
+ * YouTube's interactive live gifts feature
  * @param {object} viewModel 
  * @returns {object}
  */

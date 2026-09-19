@@ -1,7 +1,7 @@
 {
   "name": "youtube-live-connector",
   "version": "1.0.2",
-  "description": "Connect to YouTube Live streams via URL or video ID to extract live chat comments, gifts (Super Chats, Super Stickers, Memberships), and real-time live viewer counts. Event-driven API similar to tiktok-live-connector.",
+  "description": "Connect to YouTube Live streams via URL or video ID to extract live chat comments, gifts (Super Chats, Super Stickers, Memberships, Jewels Gifts), and real-time live viewer counts. Event-driven API.",
   "main": "src/index.js",
   "module": "src/index.mjs",
   "types": "index.d.ts",
@@ -36,7 +36,6 @@
     "supersticker",
     "viewers",
     "connector",
-    "tiktok-live-connector",
     "event-emitter"
   ],
   "author": "",
