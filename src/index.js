@@ -10,21 +10,26 @@ const {
   parseGiftMemberships
 } = require('./parsers/giftParser');
 const { parseInitialStreamInfo, parseUpdatedMetadataActions } = require('./parsers/metadataParser');
-const { parseViewerCount, parsePrice } = require('./utils/helpers');
+const { parseViewerCount, parsePrice, parseBadges, extractRunText } = require('./utils/helpers');
 
-module.exports = {
-  YouTubeLiveConnector,
-  // Helper / Resolver exports
-  resolveVideoId,
-  extractVideoIdSync,
-  // Parsers
-  parseChatMessage,
-  parseSuperChat,
-  parseSuperSticker,
-  parseMembership,
-  parseGiftMemberships,
-  parseInitialStreamInfo,
-  parseUpdatedMetadataActions,
-  parseViewerCount,
-  parsePrice
-};
+// Support both `const YouTubeLiveConnector = require('...')`
+// AND `const { YouTubeLiveConnector } = require('...')`
+YouTubeLiveConnector.YouTubeLiveConnector = YouTubeLiveConnector;
+YouTubeLiveConnector.default = YouTubeLiveConnector;
+
+// Export utility functions and parsers on the main export
+YouTubeLiveConnector.resolveVideoId = resolveVideoId;
+YouTubeLiveConnector.extractVideoIdSync = extractVideoIdSync;
+YouTubeLiveConnector.parseChatMessage = parseChatMessage;
+YouTubeLiveConnector.parseSuperChat = parseSuperChat;
+YouTubeLiveConnector.parseSuperSticker = parseSuperSticker;
+YouTubeLiveConnector.parseMembership = parseMembership;
+YouTubeLiveConnector.parseGiftMemberships = parseGiftMemberships;
+YouTubeLiveConnector.parseInitialStreamInfo = parseInitialStreamInfo;
+YouTubeLiveConnector.parseUpdatedMetadataActions = parseUpdatedMetadataActions;
+YouTubeLiveConnector.parseViewerCount = parseViewerCount;
+YouTubeLiveConnector.parsePrice = parsePrice;
+YouTubeLiveConnector.parseBadges = parseBadges;
+YouTubeLiveConnector.extractRunText = extractRunText;
+
+module.exports = YouTubeLiveConnector;

@@ -155,3 +155,14 @@ export declare class YouTubeLiveConnector extends EventEmitter {
 
 export declare function resolveVideoId(input: string, options?: any): Promise<{ videoId: string; finalUrl: string }>;
 export declare function extractVideoIdSync(input: string): string | null;
+export declare function parseChatMessage(renderer: any): ChatMessage | null;
+export declare function parseSuperChat(renderer: any): SuperChatGift | null;
+export declare function parseSuperSticker(renderer: any): SuperStickerGift | null;
+export declare function parseMembership(renderer: any): MembershipGift | null;
+export declare function parseGiftMemberships(renderer: any): MembershipGiftPurchase | null;
+export declare function parseInitialStreamInfo(ytInitialData: any, videoId: string): StreamInfo;
+export declare function parseUpdatedMetadataActions(actions: any[]): any;
+export declare function parseViewerCount(str: string): number;
+export declare function parsePrice(text: string): { amount: number; currency: string; raw: string };
+
+export default YouTubeLiveConnector;

@@ -3,9 +3,26 @@
   "version": "1.0.0",
   "description": "Connect to YouTube Live streams via URL or video ID to extract live chat comments, gifts (Super Chats, Super Stickers, Memberships), and real-time live viewer counts. Event-driven API similar to tiktok-live-connector.",
   "main": "src/index.js",
+  "module": "src/index.mjs",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./src/index.mjs",
+      "require": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm test",
     "example:basic": "node examples/basic.js",
     "example:full": "node examples/full-listener.js"
   },
@@ -25,5 +42,8 @@
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
