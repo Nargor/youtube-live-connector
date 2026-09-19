@@ -48,9 +48,12 @@ console.log('🔑 ตรวจพบ NPM Token จาก .env เรียบร
 const npmrcContent = `//registry.npmjs.org/:_authToken=${token}\nregistry=https://registry.npmjs.org/\n`;
 fs.writeFileSync(NPMRC_PATH, npmrcContent, 'utf8');
 
+// Check for OTP flag from CLI arguments e.g. `npm run release -- --otp=123456` or `process.env.OTP`
+const otpArg = process.argv.find(a => a.startsWith('--otp=')) || (process.env.OTP ? `--otp=${process.env.OTP}` : '');
+
 try {
-  console.log('📦 กำลังรัน npm publish...');
-  execSync('npm publish', {
+  console.log(`📦 กำลังรัน npm publish ${otpArg ? '(with OTP)' : ''}...`);
+  execSync(`npm publish ${otpArg}`.trim(), {
     cwd: path.join(__dirname, '..'),
     stdio: 'inherit',
     env: {
