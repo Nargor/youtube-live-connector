@@ -1,0 +1,59 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Coverage directory used by tools like istanbul / c8
+coverage/
+*.lcov
+.nyc_output/
+
+# Environment variables
+.env
+.env.production
+.env.development
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+
+# Temporary / scratch files
+scratch/
+tmp/
+temp/

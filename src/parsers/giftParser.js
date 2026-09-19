@@ -1,0 +1,205 @@
+'use strict';
+
+const { extractRunText, parsePrice, parseBadges } = require('../utils/helpers');
+
+/**
+ * Parse a Super Chat (liveChatPaidMessageRenderer)
+ * @param {object} renderer 
+ * @returns {object}
+ */
+function parseSuperChat(renderer) {
+  if (!renderer) return null;
+
+  const id = renderer.id || '';
+  const authorName = renderer.authorName?.simpleText || '';
+  const authorChannelId = renderer.authorExternalChannelId || '';
+  const thumbnails = renderer.authorPhoto?.thumbnails || [];
+  const profilePictureUrl = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : '';
+  const badgeInfo = parseBadges(renderer.authorBadges);
+
+  const rawAmount = renderer.purchaseAmountText?.simpleText || '';
+  const { amount, currency } = parsePrice(rawAmount);
+
+  const { text: message, emojis } = extractRunText(renderer.message);
+
+  const timestampUsec = renderer.timestampUsec ? parseInt(renderer.timestampUsec, 10) : Date.now() * 1000;
+  const timestamp = new Date(Math.floor(timestampUsec / 1000));
+
+  return {
+    type: 'superchat',
+    id,
+    author: {
+      name: authorName,
+      channelId: authorChannelId,
+      profilePictureUrl,
+      isOwner: badgeInfo.isOwner,
+      isModerator: badgeInfo.isModerator,
+      isMember: badgeInfo.isMember,
+      isVerified: badgeInfo.isVerified,
+      badges: badgeInfo.badges
+    },
+    amount,
+    currency,
+    amountDisplay: rawAmount,
+    message,
+    emojis,
+    colors: {
+      headerBackgroundColor: renderer.headerBackgroundColor ? `#${renderer.headerBackgroundColor.toString(16).padStart(6, '0')}` : null,
+      headerTextColor: renderer.headerTextColor ? `#${renderer.headerTextColor.toString(16).padStart(6, '0')}` : null,
+      bodyBackgroundColor: renderer.bodyBackgroundColor ? `#${renderer.bodyBackgroundColor.toString(16).padStart(6, '0')}` : null,
+      bodyTextColor: renderer.bodyTextColor ? `#${renderer.bodyTextColor.toString(16).padStart(6, '0')}` : null
+    },
+    timestamp,
+    timestampUsec,
+    raw: renderer
+  };
+}
+
+/**
+ * Parse a Super Sticker (liveChatPaidStickerRenderer)
+ * @param {object} renderer 
+ * @returns {object}
+ */
+function parseSuperSticker(renderer) {
+  if (!renderer) return null;
+
+  const id = renderer.id || '';
+  const authorName = renderer.authorName?.simpleText || '';
+  const authorChannelId = renderer.authorExternalChannelId || '';
+  const thumbnails = renderer.authorPhoto?.thumbnails || [];
+  const profilePictureUrl = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : '';
+  const badgeInfo = parseBadges(renderer.authorBadges);
+
+  const rawAmount = renderer.purchaseAmountText?.simpleText || '';
+  const { amount, currency } = parsePrice(rawAmount);
+
+  const stickerThumbnails = renderer.sticker?.thumbnails || [];
+  const stickerUrl = stickerThumbnails.length > 0 ? stickerThumbnails[stickerThumbnails.length - 1].url : '';
+  const stickerAlt = renderer.sticker?.accessibility?.accessibilityData?.label || '';
+
+  const timestampUsec = renderer.timestampUsec ? parseInt(renderer.timestampUsec, 10) : Date.now() * 1000;
+  const timestamp = new Date(Math.floor(timestampUsec / 1000));
+
+  return {
+    type: 'supersticker',
+    id,
+    author: {
+      name: authorName,
+      channelId: authorChannelId,
+      profilePictureUrl,
+      isOwner: badgeInfo.isOwner,
+      isModerator: badgeInfo.isModerator,
+      isMember: badgeInfo.isMember,
+      isVerified: badgeInfo.isVerified,
+      badges: badgeInfo.badges
+    },
+    amount,
+    currency,
+    amountDisplay: rawAmount,
+    sticker: {
+      url: stickerUrl,
+      alt: stickerAlt
+    },
+    backgroundColor: renderer.backgroundColor ? `#${renderer.backgroundColor.toString(16).padStart(6, '0')}` : null,
+    timestamp,
+    timestampUsec,
+    raw: renderer
+  };
+}
+
+/**
+ * Parse Channel Membership Join / Renewal / Milestone (liveChatMembershipItemRenderer)
+ * @param {object} renderer 
+ * @returns {object}
+ */
+function parseMembership(renderer) {
+  if (!renderer) return null;
+
+  const id = renderer.id || '';
+  const authorName = renderer.authorName?.simpleText || '';
+  const authorChannelId = renderer.authorExternalChannelId || '';
+  const thumbnails = renderer.authorPhoto?.thumbnails || [];
+  const profilePictureUrl = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : '';
+  const badgeInfo = parseBadges(renderer.authorBadges);
+
+  const { text: headerSubtext } = extractRunText(renderer.headerSubtext);
+  const { text: headerPrimaryText } = extractRunText(renderer.headerPrimaryText);
+  const { text: message, emojis } = extractRunText(renderer.message);
+
+  const timestampUsec = renderer.timestampUsec ? parseInt(renderer.timestampUsec, 10) : Date.now() * 1000;
+  const timestamp = new Date(Math.floor(timestampUsec / 1000));
+
+  return {
+    type: 'membership',
+    id,
+    author: {
+      name: authorName,
+      channelId: authorChannelId,
+      profilePictureUrl,
+      isOwner: badgeInfo.isOwner,
+      isModerator: badgeInfo.isModerator,
+      isMember: true,
+      isVerified: badgeInfo.isVerified,
+      badges: badgeInfo.badges
+    },
+    headerText: headerPrimaryText || headerSubtext,
+    subtext: headerSubtext,
+    message,
+    emojis,
+    timestamp,
+    timestampUsec,
+    raw: renderer
+  };
+}
+
+/**
+ * Parse Gift Memberships Purchased (liveChatSponsorshipsGiftPurchaseAnnouncementRenderer)
+ * @param {object} renderer 
+ * @returns {object}
+ */
+function parseGiftMemberships(renderer) {
+  if (!renderer) return null;
+
+  const id = renderer.id || '';
+  const header = renderer.header?.liveChatSponsorshipsHeaderRenderer;
+  const authorName = header?.authorName?.simpleText || '';
+  const thumbnails = header?.authorPhoto?.thumbnails || [];
+  const profilePictureUrl = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url : '';
+  const badgeInfo = parseBadges(header?.authorBadges);
+
+  const { text: headerText } = extractRunText(header?.primaryText);
+
+  // Parse gift count e.g. "Gifted 5 channel memberships"
+  const countMatch = headerText.match(/(\d+)/);
+  const count = countMatch ? parseInt(countMatch[1], 10) : 1;
+
+  const timestampUsec = renderer.timestampUsec ? parseInt(renderer.timestampUsec, 10) : Date.now() * 1000;
+  const timestamp = new Date(Math.floor(timestampUsec / 1000));
+
+  return {
+    type: 'membership_gift',
+    id,
+    author: {
+      name: authorName,
+      channelId: '',
+      profilePictureUrl,
+      isOwner: badgeInfo.isOwner,
+      isModerator: badgeInfo.isModerator,
+      isMember: true,
+      isVerified: badgeInfo.isVerified,
+      badges: badgeInfo.badges
+    },
+    giftCount: count,
+    headerText,
+    timestamp,
+    timestampUsec,
+    raw: renderer
+  };
+}
+
+module.exports = {
+  parseSuperChat,
+  parseSuperSticker,
+  parseMembership,
+  parseGiftMemberships
+};
