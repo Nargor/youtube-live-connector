@@ -79,7 +79,22 @@ live.on('gift', (gift) => {
   }
 });
 
-// 4. ดึงจำนวนคนดูสด (อัปเดตแบบเรียลไทม์)
+// 4. ดักจับยอดไลก์ (Like) และจำนวนที่เพิ่มขึ้น
+live.on('like', (data) => {
+  console.log(`[ไลก์] รวม: ${data.likeCountDisplay} (+${data.likesIncrement})`);
+});
+
+// 5. ดักจับการกด Emoji Reactions (❤️, 😄, 🎉, 😳, 💯)
+live.on('reaction', (data) => {
+  console.log(`[Reaction] มีคนกด ${data.emoji} จำนวน ${data.count} ครั้ง!`);
+});
+
+// 6. ดักจับการสมัครสมาชิก / ติดตาม (Subscribe / Membership)
+live.on('subscribe', (data) => {
+  console.log(`[ผู้ติดตาม/สมาชิกใหม่] ${data.author ? data.author.name : 'มีคนสมัครสมาชิก/ติดตาม!'}`);
+});
+
+// 7. ดึงจำนวนคนดูสด (อัปเดตแบบเรียลไทม์)
 live.on('viewers', (data) => {
   console.log(`[คนดูสด] ${data.viewerCount.toLocaleString()} คน (${data.viewerCountDisplay})`);
 });
@@ -164,9 +179,66 @@ live.on('viewers', (data) => {
 });
 ```
 
+### Event: `reaction` & `reactions` (Emoji Fountain)
+ส่งออกเมื่อมีคนกด Floating Emoji Reactions ลอยขึ้นมาในสตรีม (เช่น ❤️, 😄, 🎉, 😳, 💯)
+```javascript
+// ดักจับรายอีโมจิ
+live.on('reaction', (data) => {
+  console.log(data.emoji);          // '❤️' หรือ '😄', '🎉', '😳', '💯'
+  console.log(data.count);          // จำนวนครั้งที่กดในรอบนั้น (เช่น 3)
+  console.log(data.totalReactions); // ยอดรวมทั้งหมดในชุดนั้น
+  console.log(data.intensityScore); // ระดับความแรง (0.0 - 1.0)
+  console.log(data.timestamp);      // Date object
+});
+
+// หรือดักจับเป็นชุด Batch
+live.on('reactions', (batch) => {
+  console.log(`มีคนกดรีแอ็กชันรวม ${batch.totalReactions} ครั้ง:`);
+  for (const r of batch.reactions) {
+    console.log(`- ${r.emoji}: ${r.count} ครั้ง`);
+  }
+});
+```
+
+### Event: `like`
+ส่งออกเมื่อยอดกดไลก์ของสตรีมมีการอัปเดต พร้อมคำนวณจำนวนที่เพิ่มขึ้นให้อัตโนมัติ:
+```javascript
+live.on('like', (data) => {
+  console.log(data.likeCount);        // ตัวเลขจำนวนไลก์ (เช่น 1200)
+  console.log(data.likeCountDisplay); // ข้อความที่แสดงผล (เช่น "1.2K")
+  console.log(data.likesIncrement);   // จำนวนไลก์ที่เพิ่มขึ้นจากรอบก่อนหน้า (เช่น 5)
+  console.log(data.timestamp);        // Date object
+});
+```
+
+### Event: `subscribe` (หรือ `follow`)
+ส่งออกเมื่อมีผู้ติดตาม/สมัครสมาชิกเข้ามาใหม่ (Channel Membership หรือ Viewer Engagement Subscriber Notice):
+```javascript
+live.on('subscribe', (data) => {
+  console.log(data.isMembership); // เป็นสมาชิกช่อง (true) หรือประกาศผู้ติดตาม (false)
+  console.log(data.subType);      // 'membership' หรือ 'engagement_notice'
+  if (data.author) {
+    console.log(data.author.name);              // ชื่อผู้สมัคร
+    console.log(data.author.profilePictureUrl);  // รูปโปรไฟล์
+  }
+});
+
+// สามารถใช้ alias 'follow' ได้เช่นกัน
+live.on('follow', (data) => { ... });
+```
+
+### Event: `engagement`
+ส่งออกเมื่อมีประกาศข้อความ Engagement จากระบบของ YouTube ในไลฟ์แชท
+```javascript
+live.on('engagement', (data) => {
+  console.log(data.message);           // ข้อความประกาศ
+  console.log(data.isSubscribeNotice); // เป็นข้อความชวนติดตามหรือไม่ (true/false)
+});
+```
+
 ### Event อื่นๆ:
 - `title`: เมื่อมีการเปลี่ยนชื่อไลฟ์สตรีม `{ title: string }`
-- `like`: เมื่อยอดไลก์อัปเดต `{ likeCount: string }`
+- `streamEnded`: เมื่อสตรีมสดสิ้นสุดลง
 - `disconnected`: เมื่อการเชื่อมต่อถูกตัด `{ reason: string }`
 - `warning`: คำเตือน (เช่น ไลฟ์นี้ถูกปิดคอมเมนต์)
 - `error`: ข้อผิดพลาดในการเชื่อมต่อ

@@ -159,14 +159,15 @@ class InnertubeService {
       liveChatRenderer,
       continuation,
       timeoutMs,
-      isDisabled: false
+      isDisabled: false,
+      frameworkUpdates: ytInitialData?.frameworkUpdates || null
     };
   }
 
   /**
    * Fetch live chat messages continuation from Innertube API
    * @param {string} continuationToken 
-   * @returns {Promise<{ actions: Array, nextContinuation: string|null, timeoutMs: number }>}
+   * @returns {Promise<{ actions: Array, nextContinuation: string|null, timeoutMs: number, frameworkUpdates?: object }>}
    */
   async fetchLiveChatContinuation(continuationToken) {
     const url = `https://www.youtube.com/youtubei/v1/live_chat/get_live_chat?key=${this.apiKey}`;
@@ -200,7 +201,8 @@ class InnertubeService {
     return {
       actions,
       nextContinuation,
-      timeoutMs
+      timeoutMs,
+      frameworkUpdates: res.frameworkUpdates || null
     };
   }
 

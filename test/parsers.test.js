@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseChatMessage } = require('../src/parsers/chatParser');
+const { parseChatMessage, parseViewerEngagementMessage } = require('../src/parsers/chatParser');
 const {
   parseSuperChat,
   parseSuperSticker,
@@ -11,6 +11,7 @@ const {
   parseJewelsGift,
   parseGiftRedemption
 } = require('../src/parsers/giftParser');
+const { parseEmojiReactions } = require('../src/parsers/reactionParser');
 const { parseViewerCount, parsePrice } = require('../src/utils/helpers');
 
 test('parseViewerCount - handles standard and abbreviated formats', () => {
@@ -206,5 +207,77 @@ test('parseGiftRedemption - correctly parses liveChatSponsorshipsGiftRedemptionA
   assert.equal(parsed.gifterName, 'GenerousDonor');
   assert.equal(parsed.author.isMember, true);
 });
+
+test('parseEmojiReactions - correctly parses emoji fountain mutations', () => {
+  const mockMutations = [
+    {
+      entityKey: 'EiV5b3V0dWJlL2FwcC9lbW9qaV9mb3VudGFpbl9lbnRpdHlfa2V5IIkDKAE%3D',
+      type: 'ENTITY_MUTATION_TYPE_REPLACE',
+      payload: {
+        emojiFountainDataEntity: {
+          key: 'EiV5b3V0dWJlL2FwcC9lbW9qaV9mb3VudGFpbl9lbnRpdHlfa2V5IIkDKAE%3D',
+          reactionBuckets: [
+            {
+              totalReactions: 6,
+              duration: { seconds: '1' },
+              intensityScore: 0.85,
+              reactionsData: [
+                { unicodeEmojiId: '❤', reactionCount: 3 },
+                { unicodeEmojiId: '🎉', reactionCount: 2 },
+                { unicodeEmojiId: '💯', reactionCount: 1 }
+              ]
+            }
+          ],
+          updateTimeUsec: '1785989610359770'
+        }
+      }
+    }
+  ];
+
+  const parsed = parseEmojiReactions(mockMutations);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].totalReactions, 6);
+  assert.equal(parsed[0].intensityScore, 0.85);
+  assert.equal(parsed[0].durationSeconds, 1);
+  assert.equal(parsed[0].updateTimeUsec, '1785989610359770');
+  assert.equal(parsed[0].reactions.length, 3);
+  assert.equal(parsed[0].reactions[0].emoji, '❤');
+  assert.equal(parsed[0].reactions[0].count, 3);
+  assert.equal(parsed[0].reactions[1].emoji, '🎉');
+  assert.equal(parsed[0].reactions[1].count, 2);
+  assert.equal(parsed[0].reactions[2].emoji, '💯');
+  assert.equal(parsed[0].reactions[2].count, 1);
+});
+
+test('parseEmojiReactions - returns empty array on invalid or empty mutations', () => {
+  assert.deepEqual(parseEmojiReactions(null), []);
+  assert.deepEqual(parseEmojiReactions([]), []);
+  assert.deepEqual(parseEmojiReactions([{ payload: {} }]), []);
+});
+
+test('parseViewerEngagementMessage - correctly parses engagement and subscriber notice', () => {
+  const normalNotice = {
+    id: 'eng_1',
+    timestampUsec: '1700000000000000',
+    message: { runs: [{ text: 'Welcome to the live stream chat!' }] },
+    icon: { iconType: 'YOUTUBE_ROUND' }
+  };
+
+  const parsedNormal = parseViewerEngagementMessage(normalNotice);
+  assert.equal(parsedNormal.id, 'eng_1');
+  assert.equal(parsedNormal.message, 'Welcome to the live stream chat!');
+  assert.equal(parsedNormal.isSubscribeNotice, false);
+
+  const subNotice = {
+    id: 'eng_2',
+    timestampUsec: '1700000000000000',
+    message: { runs: [{ text: 'Don’t forget to subscribe to support the channel!' }] }
+  };
+
+  const parsedSub = parseViewerEngagementMessage(subNotice);
+  assert.equal(parsedSub.id, 'eng_2');
+  assert.equal(parsedSub.isSubscribeNotice, true);
+});
+
 
 

@@ -124,6 +124,61 @@ export interface MembershipRedeemGift {
 
 export type GiftEvent = SuperChatGift | SuperStickerGift | MembershipGift | MembershipGiftPurchase | JewelsGift | MembershipRedeemGift;
 
+export interface ReactionItem {
+  emoji: string;
+  count: number;
+}
+
+export interface ReactionEvent {
+  emoji: string;
+  count: number;
+  totalReactions: number;
+  intensityScore: number;
+  updateTimeUsec: string;
+  timestamp: Date;
+  raw: any;
+}
+
+export interface ReactionsBatchEvent {
+  key: string;
+  updateTimeUsec: string;
+  totalReactions: number;
+  intensityScore: number;
+  durationSeconds: number;
+  reactions: ReactionItem[];
+  timestamp: Date;
+  raw: any;
+}
+
+export interface LikeEvent {
+  likeCount: number;
+  likeCountDisplay: string;
+  likesIncrement: number;
+  timestamp: Date;
+}
+
+export interface SubscribeEvent {
+  id: string;
+  author?: ChatAuthor;
+  isMembership: boolean;
+  subType: 'membership' | 'engagement_notice' | string;
+  headerText?: string;
+  message?: string;
+  timestamp: Date;
+  raw: any;
+}
+
+export interface EngagementEvent {
+  id: string;
+  message: string;
+  iconType: string;
+  actionButtonText?: string;
+  isSubscribeNotice: boolean;
+  timestamp: Date;
+  timestampUsec: number;
+  raw: any;
+}
+
 export interface ViewersData {
   viewerCount: number;
   viewerCountDisplay: string;
@@ -138,7 +193,8 @@ export interface StreamInfo {
   channelUrl: string;
   viewerCount: number;
   viewerCountDisplay: string;
-  likeCount: string;
+  likeCount: number;
+  likeCountDisplay: string;
   isLive: boolean;
   url: string;
 }
@@ -172,10 +228,15 @@ export declare class YouTubeLiveConnector extends EventEmitter {
   on(event: 'memberGift', listener: (memberGift: MembershipGiftPurchase) => void): this;
   on(event: 'memberRedeem', listener: (redeem: MembershipRedeemGift) => void): this;
   on(event: 'jewelsGift', listener: (jewelsGift: JewelsGift) => void): this;
+  on(event: 'reaction', listener: (reaction: ReactionEvent) => void): this;
+  on(event: 'reactions', listener: (reactionsBatch: ReactionsBatchEvent) => void): this;
+  on(event: 'like', listener: (data: LikeEvent) => void): this;
+  on(event: 'subscribe', listener: (data: SubscribeEvent) => void): this;
+  on(event: 'follow', listener: (data: SubscribeEvent) => void): this;
+  on(event: 'engagement', listener: (data: EngagementEvent) => void): this;
   on(event: 'viewers', listener: (data: ViewersData) => void): this;
   on(event: 'roomUser', listener: (data: ViewersData) => void): this;
   on(event: 'title', listener: (data: { title: string }) => void): this;
-  on(event: 'like', listener: (data: { likeCount: string }) => void): this;
   on(event: 'warning', listener: (data: { type: string; message: string }) => void): this;
   on(event: 'error', listener: (err: Error) => void): this;
   on(event: 'raw', listener: (action: any) => void): this;
@@ -184,6 +245,8 @@ export declare class YouTubeLiveConnector extends EventEmitter {
 export declare function resolveVideoId(input: string, options?: any): Promise<{ videoId: string; finalUrl: string }>;
 export declare function extractVideoIdSync(input: string): string | null;
 export declare function parseChatMessage(renderer: any): ChatMessage | null;
+export declare function parseViewerEngagementMessage(renderer: any): EngagementEvent | null;
+export declare function parseEmojiReactions(mutations: any[]): ReactionsBatchEvent[];
 export declare function parseSuperChat(renderer: any): SuperChatGift | null;
 export declare function parseSuperSticker(renderer: any): SuperStickerGift | null;
 export declare function parseMembership(renderer: any): MembershipGift | null;

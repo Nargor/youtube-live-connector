@@ -3,7 +3,7 @@
 const EventEmitter = require('events');
 const InnertubeService = require('./services/innertubeService');
 const { resolveVideoId } = require('./services/urlResolver');
-const { parseChatMessage } = require('./parsers/chatParser');
+const { parseChatMessage, parseViewerEngagementMessage } = require('./parsers/chatParser');
 const {
   parseSuperChat,
   parseSuperSticker,
@@ -16,6 +16,7 @@ const {
   parseInitialStreamInfo,
   parseUpdatedMetadataActions
 } = require('./parsers/metadataParser');
+const { parseEmojiReactions } = require('./parsers/reactionParser');
 
 class YouTubeLiveConnector extends EventEmitter {
   /**
@@ -56,6 +57,10 @@ class YouTubeLiveConnector extends EventEmitter {
     this.chatTimer = null;
     this.viewerTimer = null;
 
+    // Last seen states for likes & emoji reactions
+    this.lastLikeCount = null;
+    this.lastReactionUpdateTimeUsec = null;
+
     // Deduplication set for processed message IDs
     this.processedMessageIds = new Set();
     this.maxCachedMessageIds = 10000;
@@ -87,6 +92,9 @@ class YouTubeLiveConnector extends EventEmitter {
       const { ytInitialData } = await this.innertube.fetchWatchPage(this.videoId);
       this.streamInfo = parseInitialStreamInfo(ytInitialData, this.videoId);
       this.streamInfo.url = resolved.finalUrl;
+      if (this.streamInfo.likeCount !== undefined && this.streamInfo.likeCount !== null) {
+        this.lastLikeCount = this.streamInfo.likeCount;
+      }
 
       // 3. Fetch live_chat page to obtain initial chat continuation token
       const chatPage = await this.innertube.fetchLiveChatPage(this.videoId);
@@ -102,12 +110,27 @@ class YouTubeLiveConnector extends EventEmitter {
         this._emitViewerCount(this.streamInfo.viewerCount, this.streamInfo.viewerCountDisplay);
       }
 
+      // If initial like count was discovered, emit like event
+      if (this.streamInfo.likeCount > 0 || this.streamInfo.likeCountDisplay) {
+        this.emit('like', {
+          likeCount: this.streamInfo.likeCount,
+          likeCountDisplay: this.streamInfo.likeCountDisplay || String(this.streamInfo.likeCount),
+          likesIncrement: 0,
+          timestamp: new Date()
+        });
+      }
+
       // If chat is disabled, warn user
       if (chatPage.isDisabled) {
         this.emit('warning', {
           type: 'chat_disabled',
           message: 'Live chat is disabled for this stream.'
         });
+      }
+
+      // Process initial reactions if present (unless ignoreInitialChat is true)
+      if (chatPage.frameworkUpdates?.entityBatchUpdate?.mutations && !this.ignoreInitialChat) {
+        this._processReactions(chatPage.frameworkUpdates.entityBatchUpdate.mutations);
       }
 
       // Process initial chat messages if present (unless ignoreInitialChat is true)
@@ -156,6 +179,11 @@ class YouTubeLiveConnector extends EventEmitter {
     try {
       const res = await this.innertube.fetchLiveChatContinuation(this.chatContinuation);
 
+      // Process emoji reactions (floating emoji fountain: ❤️, 😄, 🎉, 😳, 💯)
+      if (res.frameworkUpdates?.entityBatchUpdate?.mutations) {
+        this._processReactions(res.frameworkUpdates.entityBatchUpdate.mutations);
+      }
+
       if (res.actions && res.actions.length > 0) {
         this._processActions(res.actions);
       }
@@ -172,6 +200,38 @@ class YouTubeLiveConnector extends EventEmitter {
       this.emit('error', err);
       // Retry chat polling with fallback delay
       this._scheduleChatPoll(4000);
+    }
+  }
+
+  /**
+   * Process and dispatch emoji fountain reactions
+   * @private
+   */
+  _processReactions(mutations) {
+    const batches = parseEmojiReactions(mutations);
+    for (const batch of batches) {
+      if (batch.updateTimeUsec && batch.updateTimeUsec === this.lastReactionUpdateTimeUsec) {
+        continue;
+      }
+      if (batch.updateTimeUsec) {
+        this.lastReactionUpdateTimeUsec = batch.updateTimeUsec;
+      }
+
+      // Emit batch reactions event
+      this.emit('reactions', batch);
+
+      // Emit individual reaction event for each emoji
+      for (const r of batch.reactions) {
+        this.emit('reaction', {
+          emoji: r.emoji,
+          count: r.count,
+          totalReactions: batch.totalReactions,
+          intensityScore: batch.intensityScore,
+          updateTimeUsec: batch.updateTimeUsec,
+          timestamp: batch.timestamp,
+          raw: batch.raw
+        });
+      }
     }
   }
 
@@ -210,9 +270,23 @@ class YouTubeLiveConnector extends EventEmitter {
           this.emit('title', { title: updates.title });
         }
 
-        if (updates.likeCount) {
-          this.streamInfo.likeCount = updates.likeCount;
-          this.emit('like', { likeCount: updates.likeCount });
+        if (updates.likeCountDisplay || updates.likeCount !== undefined) {
+          const currentLikeCount = updates.likeCount !== undefined ? updates.likeCount : 0;
+          const display = updates.likeCountDisplay || String(currentLikeCount);
+          const increment = this.lastLikeCount !== null ? Math.max(0, currentLikeCount - this.lastLikeCount) : 0;
+
+          this.streamInfo.likeCount = currentLikeCount;
+          this.streamInfo.likeCountDisplay = display;
+
+          if (this.lastLikeCount === null || currentLikeCount !== this.lastLikeCount) {
+            this.lastLikeCount = currentLikeCount;
+            this.emit('like', {
+              likeCount: currentLikeCount,
+              likeCountDisplay: display,
+              likesIncrement: increment,
+              timestamp: new Date()
+            });
+          }
         }
 
         if (updates.isLive === false && this.streamInfo.isLive === true) {
@@ -314,6 +388,17 @@ class YouTubeLiveConnector extends EventEmitter {
           this.emit('gift', memberData);
           // Emit specific member event
           this.emit('member', memberData);
+          // Emit subscribe and follow event (membership subscription)
+          this.emit('subscribe', {
+            ...memberData,
+            isMembership: true,
+            subType: 'membership'
+          });
+          this.emit('follow', {
+            ...memberData,
+            isMembership: true,
+            subType: 'membership'
+          });
         }
         continue;
       }
@@ -342,7 +427,34 @@ class YouTubeLiveConnector extends EventEmitter {
         continue;
       }
 
-      // 7. Viewer Engagement (e.g. pinned message, polls)
+      // 7. Viewer Engagement Message (e.g. system notices, subscriber notices)
+      if (item.liveChatViewerEngagementMessageRenderer) {
+        const engagementData = parseViewerEngagementMessage(item.liveChatViewerEngagementMessageRenderer);
+        if (engagementData && !this._isDuplicate(engagementData.id)) {
+          this.emit('engagement', engagementData);
+          if (engagementData.isSubscribeNotice) {
+            this.emit('subscribe', {
+              id: engagementData.id,
+              message: engagementData.message,
+              isMembership: false,
+              subType: 'engagement_notice',
+              timestamp: engagementData.timestamp,
+              raw: engagementData.raw
+            });
+            this.emit('follow', {
+              id: engagementData.id,
+              message: engagementData.message,
+              isMembership: false,
+              subType: 'engagement_notice',
+              timestamp: engagementData.timestamp,
+              raw: engagementData.raw
+            });
+          }
+        }
+        continue;
+      }
+
+      // 8. Viewer Engagement Action Panel (e.g. pinned message, polls)
       if (action.showLiveChatActionPanelAction) {
         this.emit('actionPanel', action.showLiveChatActionPanelAction);
       }
@@ -389,6 +501,8 @@ class YouTubeLiveConnector extends EventEmitter {
 
     this.chatContinuation = null;
     this.metadataContinuation = null;
+    this.lastReactionUpdateTimeUsec = null;
+    this.lastLikeCount = null;
 
     this.emit('disconnected', { reason });
   }

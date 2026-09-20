@@ -2,7 +2,7 @@
 
 const YouTubeLiveConnector = require('./YouTubeLiveConnector');
 const { resolveVideoId, extractVideoIdSync } = require('./services/urlResolver');
-const { parseChatMessage } = require('./parsers/chatParser');
+const { parseChatMessage, parseViewerEngagementMessage } = require('./parsers/chatParser');
 const {
   parseSuperChat,
   parseSuperSticker,
@@ -12,6 +12,7 @@ const {
   parseGiftRedemption
 } = require('./parsers/giftParser');
 const { parseInitialStreamInfo, parseUpdatedMetadataActions } = require('./parsers/metadataParser');
+const { parseEmojiReactions } = require('./parsers/reactionParser');
 const { parseViewerCount, parsePrice, parseBadges, extractRunText } = require('./utils/helpers');
 
 // Support both `const YouTubeLiveConnector = require('...')`
@@ -23,6 +24,8 @@ YouTubeLiveConnector.default = YouTubeLiveConnector;
 YouTubeLiveConnector.resolveVideoId = resolveVideoId;
 YouTubeLiveConnector.extractVideoIdSync = extractVideoIdSync;
 YouTubeLiveConnector.parseChatMessage = parseChatMessage;
+YouTubeLiveConnector.parseViewerEngagementMessage = parseViewerEngagementMessage;
+YouTubeLiveConnector.parseEmojiReactions = parseEmojiReactions;
 YouTubeLiveConnector.parseSuperChat = parseSuperChat;
 YouTubeLiveConnector.parseSuperSticker = parseSuperSticker;
 YouTubeLiveConnector.parseMembership = parseMembership;

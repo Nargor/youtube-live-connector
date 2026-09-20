@@ -17,7 +17,8 @@ function parseInitialStreamInfo(ytInitialData, videoId) {
     channelUrl: '',
     viewerCount: 0,
     viewerCountDisplay: '',
-    likeCount: '',
+    likeCount: 0,
+    likeCountDisplay: '',
     isLive: false,
     updatedMetadataEndpoint: null
   };
@@ -53,6 +54,24 @@ function parseInitialStreamInfo(ytInitialData, videoId) {
           result.isLive = true;
         }
 
+        // Like count from primary info buttons
+        const topButtons = p.videoActions?.menuRenderer?.topLevelButtons;
+        if (Array.isArray(topButtons)) {
+          for (const btn of topButtons) {
+            const toggle = btn.segmentedLikeDislikeButtonRenderer?.likeButton?.toggleButtonRenderer ||
+                           btn.likeButtonRenderer?.likeButton?.toggleButtonRenderer ||
+                           btn.toggleButtonRenderer;
+            if (toggle?.defaultText) {
+              const text = extractRunText(toggle.defaultText).text;
+              if (text) {
+                result.likeCountDisplay = text;
+                result.likeCount = parseViewerCount(text);
+                break;
+              }
+            }
+          }
+        }
+
         // Updated metadata endpoint (used for polling live viewers)
         if (p.updatedMetadataEndpoint) {
           result.updatedMetadataEndpoint = p.updatedMetadataEndpoint;
@@ -83,7 +102,7 @@ function parseInitialStreamInfo(ytInitialData, videoId) {
 /**
  * Parse updated_metadata actions from YouTube InnerTube
  * @param {Array} actions 
- * @returns {{ viewerCount?: number, viewerCountDisplay?: string, isLive?: boolean, title?: string, likeCount?: string }}
+ * @returns {{ viewerCount?: number, viewerCountDisplay?: string, isLive?: boolean, title?: string, likeCount?: number, likeCountDisplay?: string }}
  */
 function parseUpdatedMetadataActions(actions) {
   const updates = {};
@@ -109,7 +128,9 @@ function parseUpdatedMetadataActions(actions) {
     if (a.updateToggleMenuServiceItemAction) {
       const defaultText = a.updateToggleMenuServiceItemAction.defaultText;
       if (defaultText) {
-        updates.likeCount = extractRunText(defaultText).text;
+        const text = extractRunText(defaultText).text;
+        updates.likeCountDisplay = text;
+        updates.likeCount = parseViewerCount(text);
       }
     }
   }

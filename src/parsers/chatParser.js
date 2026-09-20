@@ -49,6 +49,39 @@ function parseChatMessage(renderer) {
   };
 }
 
+/**
+ * Parse viewer engagement message (liveChatViewerEngagementMessageRenderer)
+ * e.g., pinned announcements, system notices, subscriber notices
+ * @param {object} renderer 
+ * @returns {object|null}
+ */
+function parseViewerEngagementMessage(renderer) {
+  if (!renderer) return null;
+
+  const id = renderer.id || '';
+  const timestampUsec = renderer.timestampUsec ? parseInt(renderer.timestampUsec, 10) : Date.now() * 1000;
+  const timestamp = new Date(Math.floor(timestampUsec / 1000));
+  const { text: message } = extractRunText(renderer.message);
+  const iconType = renderer.icon?.iconType || '';
+  const actionButtonText = renderer.actionButton?.buttonRenderer?.text?.simpleText || 
+    extractRunText(renderer.actionButton?.buttonRenderer?.text).text;
+
+  const lower = message.toLowerCase();
+  const isSubscribeNotice = lower.includes('subscri') || lower.includes('follow') || lower.includes('ติดตาม');
+
+  return {
+    id,
+    message,
+    iconType,
+    actionButtonText,
+    isSubscribeNotice,
+    timestamp,
+    timestampUsec,
+    raw: renderer
+  };
+}
+
 module.exports = {
-  parseChatMessage
+  parseChatMessage,
+  parseViewerEngagementMessage
 };

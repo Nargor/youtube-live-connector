@@ -1,6 +1,6 @@
 import YouTubeLiveConnector from './YouTubeLiveConnector.js';
 import { resolveVideoId, extractVideoIdSync } from './services/urlResolver.js';
-import { parseChatMessage } from './parsers/chatParser.js';
+import { parseChatMessage, parseViewerEngagementMessage } from './parsers/chatParser.js';
 import {
   parseSuperChat,
   parseSuperSticker,
@@ -10,6 +10,7 @@ import {
   parseGiftRedemption
 } from './parsers/giftParser.js';
 import { parseInitialStreamInfo, parseUpdatedMetadataActions } from './parsers/metadataParser.js';
+import { parseEmojiReactions } from './parsers/reactionParser.js';
 import { parseViewerCount, parsePrice, parseBadges, extractRunText } from './utils/helpers.js';
 
 export {
@@ -17,6 +18,8 @@ export {
   resolveVideoId,
   extractVideoIdSync,
   parseChatMessage,
+  parseViewerEngagementMessage,
+  parseEmojiReactions,
   parseSuperChat,
   parseSuperSticker,
   parseMembership,
