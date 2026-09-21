@@ -30,6 +30,7 @@ class YouTubeLiveConnector extends EventEmitter {
    * @param {number} [options.viewerIntervalMs=5000] Interval for polling live viewers (default 5000ms)
    * @param {number} [options.chatIntervalMs] Override chat polling interval (defaults to YouTube recommendation)
    * @param {boolean} [options.ignoreInitialChat=false] Skip emitting chat items present on initial page load
+   * @param {boolean} [options.autoDisconnectOnEnd=true] Automatically disconnect when stream ends
    * @param {object} [options.headers] Custom HTTP headers
    */
   constructor(options = {}) {
@@ -50,6 +51,7 @@ class YouTubeLiveConnector extends EventEmitter {
     this.viewerIntervalMs = options.viewerIntervalMs || 5000;
     this.chatIntervalOverride = options.chatIntervalMs || null;
     this.ignoreInitialChat = options.ignoreInitialChat === true;
+    this.autoDisconnectOnEnd = options.autoDisconnectOnEnd !== false;
 
     this.innertube = new InnertubeService({
       headers: options.headers
@@ -72,6 +74,11 @@ class YouTubeLiveConnector extends EventEmitter {
     // Deduplication set for processed message IDs
     this.processedMessageIds = new Set();
     this.maxCachedMessageIds = 10000;
+
+    // Stream-ended detection: count consecutive chat polls with no continuation
+    this.chatEndRetries = 0;
+    this.maxChatEndRetries = 3;
+    this._hasEnded = false;
   }
 
   /**
@@ -109,6 +116,8 @@ class YouTubeLiveConnector extends EventEmitter {
       this.chatContinuation = chatPage.continuation;
 
       this.connected = true;
+      this._hasEnded = false;
+      this.chatEndRetries = 0;
 
       // Emit connected event
       this.emit('connected', { ...this.streamInfo });
@@ -197,14 +206,30 @@ class YouTubeLiveConnector extends EventEmitter {
       }
 
       if (res.nextContinuation) {
+        // Got a valid continuation — stream is still live, reset the end-retry counter
+        this.chatEndRetries = 0;
         this.chatContinuation = res.nextContinuation;
         const nextDelay = this.chatIntervalOverride || res.timeoutMs || 2000;
         this._scheduleChatPoll(nextDelay);
       } else {
-        // Stream chat might have ended
-        this.emit('chatEnded', { videoId: this.videoId });
+        // No continuation returned — YouTube stops providing one when the stream ends.
+        // Retry a few times to rule out transient hiccups before declaring the stream ended.
+        this.chatEndRetries++;
+        this.emit('chatEnded', { videoId: this.videoId, retryCount: this.chatEndRetries });
+
+        if (this.chatEndRetries >= this.maxChatEndRetries) {
+          // Confirmed: stream has ended
+          this._handleStreamEnded('Chat continuation exhausted');
+        } else {
+          // Wait longer before retrying to avoid hammering YouTube
+          this._scheduleChatPoll(5000);
+        }
       }
     } catch (err) {
+      if (err.status === 404 || err.message?.includes('404')) {
+        this._handleStreamEnded('Video not found or stream removed');
+        return;
+      }
       this.emit('error', err);
       // Retry chat polling with fallback delay
       this._scheduleChatPoll(4000);
@@ -297,9 +322,9 @@ class YouTubeLiveConnector extends EventEmitter {
           }
         }
 
-        if (updates.isLive === false && this.streamInfo.isLive === true) {
-          this.streamInfo.isLive = false;
-          this.emit('streamEnded', { videoId: this.videoId });
+        if (updates.isLive === false) {
+          this._handleStreamEnded('Live stream has ended');
+          return;
         }
       }
 
@@ -310,6 +335,10 @@ class YouTubeLiveConnector extends EventEmitter {
       const nextDelay = res.timeoutMs || this.viewerIntervalMs;
       this._scheduleViewerPoll(nextDelay);
     } catch (err) {
+      if (err.status === 404 || err.message?.includes('404')) {
+        this._handleStreamEnded('Video not found or stream removed');
+        return;
+      }
       // Don't kill entire connector if only viewer poll fails once
       this._scheduleViewerPoll(this.viewerIntervalMs * 2);
     }
@@ -489,6 +518,38 @@ class YouTubeLiveConnector extends EventEmitter {
   }
 
   /**
+   * Handle stream ended event and trigger optional auto-disconnect
+   * @private
+   * @param {string} [reason='Stream ended']
+   */
+  _handleStreamEnded(reason = 'Stream ended') {
+    if (this._hasEnded) return;
+    this._hasEnded = true;
+
+    if (this.streamInfo) {
+      this.streamInfo.isLive = false;
+    }
+
+    if (this.chatTimer) {
+      clearTimeout(this.chatTimer);
+      this.chatTimer = null;
+    }
+    if (this.viewerTimer) {
+      clearTimeout(this.viewerTimer);
+      this.viewerTimer = null;
+    }
+
+    this.emit('streamEnded', {
+      videoId: this.videoId,
+      reason
+    });
+
+    if (this.autoDisconnectOnEnd) {
+      this.disconnect(reason);
+    }
+  }
+
+  /**
    * Disconnect and clear all timers
    * @param {string} [reason='Manual disconnect']
    */
@@ -511,6 +572,7 @@ class YouTubeLiveConnector extends EventEmitter {
     this.metadataContinuation = null;
     this.lastReactionUpdateTimeUsec = null;
     this.lastLikeCount = null;
+    this.chatEndRetries = 0;
 
     this.emit('disconnected', { reason });
   }

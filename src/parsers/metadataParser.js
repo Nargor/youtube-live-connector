@@ -31,7 +31,7 @@ function parseInitialStreamInfo(ytInitialData, videoId) {
     result.title = videoDetails.title || '';
     result.channelName = videoDetails.author || '';
     result.channelId = videoDetails.channelId || '';
-    result.isLive = !!videoDetails.isLiveContent || !!videoDetails.isLive;
+    result.isLive = !!videoDetails.isLive;
   }
 
   // Primary info renderer
@@ -47,11 +47,12 @@ function parseInitialStreamInfo(ytInitialData, videoId) {
         }
 
         // View count
-        const vc = p.viewCount?.videoViewCountRenderer?.viewCount;
-        if (vc) {
+        const vcRenderer = p.viewCount?.videoViewCountRenderer;
+        if (vcRenderer?.viewCount) {
+          const vc = vcRenderer.viewCount;
           result.viewerCountDisplay = vc.runs ? vc.runs.map(r => r.text).join('') : (vc.simpleText || '');
           result.viewerCount = parseViewerCount(result.viewerCountDisplay);
-          result.isLive = true;
+          result.isLive = vcRenderer.isLive === true;
         }
 
         // Like count from primary info buttons
@@ -116,7 +117,8 @@ function parseUpdatedMetadataActions(actions) {
         const display = vc?.runs ? vc.runs.map(r => r.text).join('') : (vc?.simpleText || '');
         updates.viewerCountDisplay = display;
         updates.viewerCount = parseViewerCount(display);
-        updates.isLive = vcRenderer.isLive !== false;
+        // isLive must be explicitly true — undefined (ended stream) → false
+        updates.isLive = vcRenderer.isLive === true;
       }
     }
 
@@ -131,6 +133,16 @@ function parseUpdatedMetadataActions(actions) {
         const text = extractRunText(defaultText).text;
         updates.likeCountDisplay = text;
         updates.likeCount = parseViewerCount(text);
+      }
+    }
+
+    // updateDateTextAction only appears after stream has ended
+    // e.g. { updateDateTextAction: { dateText: { simpleText: "Streamed live on Sep 19, 2026" } } }
+    if (a.updateDateTextAction) {
+      updates.isLive = false;
+      const dateText = a.updateDateTextAction.dateText;
+      if (dateText) {
+        updates.streamEndedDateText = dateText.simpleText || extractRunText(dateText).text || '';
       }
     }
   }

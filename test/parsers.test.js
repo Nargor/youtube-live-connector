@@ -279,5 +279,111 @@ test('parseViewerEngagementMessage - correctly parses engagement and subscriber 
   assert.equal(parsedSub.isSubscribeNotice, true);
 });
 
+test('parseUpdatedMetadataActions - detects active vs ended stream', () => {
+  const { parseUpdatedMetadataActions } = require('../src/parsers/metadataParser');
+
+  // Active stream with isLive: true
+  const activeActions = [
+    {
+      updateViewershipAction: {
+        viewCount: {
+          videoViewCountRenderer: {
+            viewCount: { simpleText: '1,234 watching now' },
+            isLive: true
+          }
+        }
+      }
+    }
+  ];
+  const activeResult = parseUpdatedMetadataActions(activeActions);
+  assert.equal(activeResult.viewerCount, 1234);
+  assert.equal(activeResult.isLive, true);
+
+  // Ended stream: isLive field is absent (undefined)
+  const endedActionsNoIsLive = [
+    {
+      updateViewershipAction: {
+        viewCount: {
+          videoViewCountRenderer: {
+            viewCount: { simpleText: '1,234 views' }
+          }
+        }
+      }
+    }
+  ];
+  const endedResultNoIsLive = parseUpdatedMetadataActions(endedActionsNoIsLive);
+  assert.equal(endedResultNoIsLive.isLive, false);
+
+  // Ended stream with updateDateTextAction
+  const endedActionsDateText = [
+    {
+      updateDateTextAction: {
+        dateText: { simpleText: 'Streamed live on Sep 19, 2026' }
+      }
+    }
+  ];
+  const endedResultDateText = parseUpdatedMetadataActions(endedActionsDateText);
+  assert.equal(endedResultDateText.isLive, false);
+  assert.equal(endedResultDateText.streamEndedDateText, 'Streamed live on Sep 19, 2026');
+});
+
+test('parseInitialStreamInfo - detects active vs ended stream', () => {
+  const { parseInitialStreamInfo } = require('../src/parsers/metadataParser');
+
+  // Active stream initial data
+  const activeData = {
+    contents: {
+      twoColumnWatchNextResults: {
+        results: {
+          results: {
+            contents: [
+              {
+                videoPrimaryInfoRenderer: {
+                  title: { runs: [{ text: 'Live Coding Stream' }] },
+                  viewCount: {
+                    videoViewCountRenderer: {
+                      viewCount: { simpleText: '500 watching now' },
+                      isLive: true
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  };
+  const activeInfo = parseInitialStreamInfo(activeData, 'vid123');
+  assert.equal(activeInfo.isLive, true);
+  assert.equal(activeInfo.viewerCount, 500);
+
+  // Ended stream initial data (no isLive key)
+  const endedData = {
+    contents: {
+      twoColumnWatchNextResults: {
+        results: {
+          results: {
+            contents: [
+              {
+                videoPrimaryInfoRenderer: {
+                  title: { runs: [{ text: 'Past Stream Archive' }] },
+                  viewCount: {
+                    videoViewCountRenderer: {
+                      viewCount: { simpleText: '10,000 views' }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  };
+  const endedInfo = parseInitialStreamInfo(endedData, 'vid456');
+  assert.equal(endedInfo.isLive, false);
+});
+
 
 

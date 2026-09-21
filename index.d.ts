@@ -209,6 +209,7 @@ export interface ConnectorOptions {
   viewerIntervalMs?: number;
   chatIntervalMs?: number;
   ignoreInitialChat?: boolean;
+  autoDisconnectOnEnd?: boolean;
   headers?: Record<string, string>;
 }
 
@@ -217,6 +218,7 @@ export declare class YouTubeLiveConnector extends EventEmitter {
   videoId?: string | null;
   streamInfo?: StreamInfo | null;
   connected: boolean;
+  autoDisconnectOnEnd: boolean;
 
   constructor(options?: ConnectorOptions | string);
 
@@ -227,6 +229,8 @@ export declare class YouTubeLiveConnector extends EventEmitter {
 
   on(event: 'connected', listener: (streamInfo: StreamInfo) => void): this;
   on(event: 'disconnected', listener: (data: { reason: string }) => void): this;
+  on(event: 'streamEnded', listener: (data: { videoId: string; reason: string }) => void): this;
+  on(event: 'chatEnded', listener: (data: { videoId: string; retryCount?: number }) => void): this;
   on(event: 'chat', listener: (message: ChatMessage) => void): this;
   on(event: 'gift', listener: (gift: GiftEvent) => void): this;
   on(event: 'superchat', listener: (superChat: SuperChatGift) => void): this;

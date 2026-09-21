@@ -323,3 +323,132 @@ test('YouTubeLiveConnector - computes like increments and emits like event', asy
     c.disconnect();
   }
 });
+
+test('YouTubeLiveConnector - detects streamEnded and auto-disconnects from viewer poll', async () => {
+  const c = new YouTubeLiveConnector({
+    url: 'test1234567',
+    pollViewers: true,
+    autoDisconnectOnEnd: true
+  });
+
+  const streamEndedEvents = [];
+  const disconnectedEvents = [];
+
+  c.on('streamEnded', (e) => streamEndedEvents.push(e));
+  c.on('disconnected', (e) => disconnectedEvents.push(e));
+
+  c.connected = true;
+  c.videoId = 'test1234567';
+  c.streamInfo = { videoId: 'test1234567', isLive: true };
+
+  // Mock metadata returning updateDateTextAction (stream has ended)
+  c.innertube.fetchUpdatedMetadata = async () => ({
+    actions: [
+      {
+        updateDateTextAction: {
+          dateText: { simpleText: 'Streamed live on Sep 21, 2026' }
+        }
+      }
+    ]
+  });
+
+  await c._pollViewers();
+
+  assert.equal(streamEndedEvents.length, 1);
+  assert.equal(streamEndedEvents[0].videoId, 'test1234567');
+  assert.equal(streamEndedEvents[0].reason, 'Live stream has ended');
+  assert.equal(c.streamInfo.isLive, false);
+  assert.equal(c.isConnected(), false);
+  assert.equal(disconnectedEvents.length, 1);
+  assert.equal(disconnectedEvents[0].reason, 'Live stream has ended');
+});
+
+test('YouTubeLiveConnector - detects streamEnded and auto-disconnects from chat continuation exhaustion', async () => {
+  const c = new YouTubeLiveConnector({
+    url: 'test1234567',
+    pollViewers: false,
+    autoDisconnectOnEnd: true
+  });
+
+  const chatEndedEvents = [];
+  const streamEndedEvents = [];
+  const disconnectedEvents = [];
+
+  c.on('chatEnded', (e) => chatEndedEvents.push(e));
+  c.on('streamEnded', (e) => streamEndedEvents.push(e));
+  c.on('disconnected', (e) => disconnectedEvents.push(e));
+
+  c.connected = true;
+  c.videoId = 'test1234567';
+  c.streamInfo = { videoId: 'test1234567', isLive: true };
+  c.chatContinuation = 'token_abc';
+
+  // Mock chat returning no nextContinuation
+  c.innertube.fetchLiveChatContinuation = async () => ({
+    actions: [],
+    nextContinuation: null
+  });
+
+  // Poll 1: retry 1
+  await c._pollChat();
+  assert.equal(chatEndedEvents.length, 1);
+  assert.equal(chatEndedEvents[0].retryCount, 1);
+  assert.equal(streamEndedEvents.length, 0);
+  assert.equal(c.isConnected(), true);
+
+  // Poll 2: retry 2
+  await c._pollChat();
+  assert.equal(chatEndedEvents.length, 2);
+  assert.equal(chatEndedEvents[1].retryCount, 2);
+  assert.equal(streamEndedEvents.length, 0);
+  assert.equal(c.isConnected(), true);
+
+  // Poll 3: reaches maxChatEndRetries (3) -> emits streamEnded and auto-disconnects
+  await c._pollChat();
+  assert.equal(chatEndedEvents.length, 3);
+  assert.equal(chatEndedEvents[2].retryCount, 3);
+  assert.equal(streamEndedEvents.length, 1);
+  assert.equal(streamEndedEvents[0].videoId, 'test1234567');
+  assert.equal(streamEndedEvents[0].reason, 'Chat continuation exhausted');
+  assert.equal(c.isConnected(), false);
+  assert.equal(disconnectedEvents.length, 1);
+});
+
+test('YouTubeLiveConnector - autoDisconnectOnEnd: false keeps connector open on streamEnded', async () => {
+  const c = new YouTubeLiveConnector({
+    url: 'test1234567',
+    pollViewers: true,
+    autoDisconnectOnEnd: false
+  });
+
+  const streamEndedEvents = [];
+  const disconnectedEvents = [];
+
+  c.on('streamEnded', (e) => streamEndedEvents.push(e));
+  c.on('disconnected', (e) => disconnectedEvents.push(e));
+
+  c.connected = true;
+  c.videoId = 'test1234567';
+  c.streamInfo = { videoId: 'test1234567', isLive: true };
+
+  c.innertube.fetchUpdatedMetadata = async () => ({
+    actions: [
+      {
+        updateDateTextAction: {
+          dateText: { simpleText: 'Streamed live on Sep 21, 2026' }
+        }
+      }
+    ]
+  });
+
+  await c._pollViewers();
+
+  assert.equal(streamEndedEvents.length, 1);
+  assert.equal(c.streamInfo.isLive, false);
+  assert.equal(c.isConnected(), true); // still connected because autoDisconnectOnEnd is false
+  assert.equal(disconnectedEvents.length, 0);
+
+  c.disconnect();
+  assert.equal(c.isConnected(), false);
+  assert.equal(disconnectedEvents.length, 1);
+});

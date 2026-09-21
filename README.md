@@ -237,10 +237,25 @@ live.on('engagement', (data) => {
 });
 ```
 
+### Event: `streamEnded`
+ส่งออกเมื่อสตรีมสดสิ้นสุดลง (ตรวจจับได้ทั้งจากการอัปเดตสถานะของไลฟ์, ข้อความบันทึกสตรีมย้อนหลัง หรือห้องแชทปิดตัวลง)
+```javascript
+live.on('streamEnded', (data) => {
+  console.log(`สตรีม ${data.videoId} จบลงแล้ว! เหตุผล: ${data.reason}`);
+});
+```
+
+### Event: `disconnected`
+ส่งออกเมื่อการเชื่อมต่อถูกตัด (เช่น สตรีมจบ หรือสั่ง disconnect ด้วยตนเอง)
+```javascript
+live.on('disconnected', (data) => {
+  console.log(`ตัดการเชื่อมต่อแล้ว เหตุผล: ${data.reason}`);
+});
+```
+
 ### Event อื่นๆ:
 - `title`: เมื่อมีการเปลี่ยนชื่อไลฟ์สตรีม `{ title: string }`
-- `streamEnded`: เมื่อสตรีมสดสิ้นสุดลง
-- `disconnected`: เมื่อการเชื่อมต่อถูกตัด `{ reason: string }`
+- `chatEnded`: เมื่อห้องแชทของไลฟ์หยุดส่งข้อมูลต่อ `{ videoId: string, retryCount: number }`
 - `warning`: คำเตือน (เช่น ไลฟ์นี้ถูกปิดคอมเมนต์)
 - `error`: ข้อผิดพลาดในการเชื่อมต่อ
 - `raw`: รับข้อมูลดิบ InnerTube Action ทั้งหมดจาก YouTube
@@ -284,6 +299,7 @@ const live = new YouTubeLiveConnector({
   viewerIntervalMs: 5000,     // ความถี่ในการอัปเดตคนดูสด (default: 5000 ms)
   chatIntervalMs: 2000,       // กำหนดความถี่อ่านแชท (ถ้าไม่กำหนดจะใช้ตามที่ YouTube แนะนำ)
   ignoreInitialChat: false,   // ข้ามแชทเก่าที่มีอยู่ก่อนหน้าบนหน้าจอหรือไม่ (default: false)
+  autoDisconnectOnEnd: true,  // ตัดการเชื่อมต่ออัตโนมัติเมื่อไลฟ์หยุด (default: true)
   headers: { ... }            // ปรับแต่ง HTTP headers เพิ่มเติม (ถ้ามี)
 });
 ```
