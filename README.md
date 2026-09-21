@@ -53,8 +53,9 @@ npm install youtube-live-connector
 ```javascript
 const { YouTubeLiveConnector } = require('youtube-live-connector');
 
-// สร้าง Connector โดยใส่ลิงก์ YouTube Live หรือ Video ID
-const live = new YouTubeLiveConnector('https://www.youtube.com/watch?v=VIDEO_ID');
+// สร้าง Connector โดยใส่ @username, ลิงก์ YouTube Live หรือ Video ID
+// (ระบบจะค้นหาไลฟ์สตรีมที่กำลังออกอากาศสดอยู่ให้โดยอัตโนมัติ!)
+const live = new YouTubeLiveConnector('@webder.nargor');
 
 // 1. รับการแจ้งเตือนเมื่อเชื่อมต่อสำเร็จ
 live.on('connected', (info) => {
@@ -246,23 +247,29 @@ live.on('engagement', (data) => {
 
 ---
 
-## รองรับ YouTube Link ทุกรูปแบบ
+## รองรับ YouTube Username และ Link ทุกรูปแบบ
 
-คุณสามารถส่งลิงก์ในรูปแบบใดก็ได้เข้าสู่ `YouTubeLiveConnector`:
+คุณสามารถส่ง `@username`, ชื่อช่อง หรือลิงก์ในรูปแบบใดก็ได้เข้าสู่ `YouTubeLiveConnector`:
 ```javascript
-// 1. Standard Watch URL
+// 1. Channel Username / Handle (สะดวกที่สุด! ระบบค้นหาไลฟ์สดของช่องให้อัตโนมัติ)
+new YouTubeLiveConnector('@webder.nargor');
+new YouTubeLiveConnector('webder.nargor');
+new YouTubeLiveConnector({ username: '@webder.nargor' });
+
+// 2. Channel Live URL
+new YouTubeLiveConnector('https://www.youtube.com/@webder.nargor/live');
+new YouTubeLiveConnector('https://www.youtube.com/@webder.nargor');
+
+// 3. Standard Watch URL
 new YouTubeLiveConnector('https://www.youtube.com/watch?v=sgQT3zcN1u4');
 
-// 2. YouTube Live URL
+// 4. YouTube Live URL
 new YouTubeLiveConnector('https://www.youtube.com/live/sgQT3zcN1u4');
 
-// 3. Short URL
+// 5. Short URL
 new YouTubeLiveConnector('https://youtu.be/sgQT3zcN1u4');
 
-// 4. Channel Live Handle URL (ระบบจะดึง Live ที่กำลังออกอากาศสดอยู่ให้โดยอัตโนมัติ)
-new YouTubeLiveConnector('https://www.youtube.com/@ChannelName/live');
-
-// 5. Raw Video ID 11 ตัว
+// 6. Raw Video ID 11 ตัว
 new YouTubeLiveConnector('sgQT3zcN1u4');
 ```
 

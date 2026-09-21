@@ -17,14 +17,28 @@ test('YouTubeLiveConnector - instantiation with string or options', () => {
   assert.equal(c2.initialUrl, 'sgQT3zcN1u4');
   assert.equal(c2.pollViewersEnabled, false);
   assert.equal(c2.viewerIntervalMs, 10000);
+
+  // Instantiation with @username
+  const c3 = new YouTubeLiveConnector('@webder.nargor');
+  assert.equal(c3.initialUrl, '@webder.nargor');
+  assert.equal(c3.username, '@webder.nargor');
+
+  // Instantiation with options.username or options.uniqueId
+  const c4 = new YouTubeLiveConnector({ username: '@webder.nargor' });
+  assert.equal(c4.initialUrl, '@webder.nargor');
+  assert.equal(c4.username, '@webder.nargor');
+
+  const c5 = new YouTubeLiveConnector({ uniqueId: 'webder.nargor' });
+  assert.equal(c5.initialUrl, 'webder.nargor');
+  assert.equal(c5.username, 'webder.nargor');
 });
 
-test('YouTubeLiveConnector - connect requires a URL', async () => {
+test('YouTubeLiveConnector - connect requires a URL or username', async () => {
   const c = new YouTubeLiveConnector();
   await assert.rejects(async () => {
     await c.connect();
   }, {
-    message: 'No YouTube URL or Video ID provided.'
+    message: /No YouTube URL/
   });
 });
 

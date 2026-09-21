@@ -203,6 +203,8 @@ export interface ConnectorOptions {
   url?: string;
   liveId?: string;
   channel?: string;
+  username?: string;
+  uniqueId?: string;
   pollViewers?: boolean;
   viewerIntervalMs?: number;
   chatIntervalMs?: number;
@@ -211,6 +213,11 @@ export interface ConnectorOptions {
 }
 
 export declare class YouTubeLiveConnector extends EventEmitter {
+  username?: string | null;
+  videoId?: string | null;
+  streamInfo?: StreamInfo | null;
+  connected: boolean;
+
   constructor(options?: ConnectorOptions | string);
 
   connect(url?: string): Promise<StreamInfo>;

@@ -20,10 +20,12 @@ const { parseEmojiReactions } = require('./parsers/reactionParser');
 
 class YouTubeLiveConnector extends EventEmitter {
   /**
-   * @param {object|string} [options] Connection options or YouTube URL / Video ID
-   * @param {string} [options.url] YouTube Live stream URL or Video ID
+   * @param {object|string} [options] Connection options or YouTube URL / Video ID / Channel handle (e.g. "@username")
+   * @param {string} [options.url] YouTube Live stream URL, Video ID, or Channel handle
    * @param {string} [options.liveId] YouTube Video ID (alias)
-   * @param {string} [options.channel] Channel URL or handle e.g. @ChannelName
+   * @param {string} [options.channel] Channel URL, handle, or username e.g. @ChannelName
+   * @param {string} [options.username] Channel handle or username e.g. @ChannelName (alias)
+   * @param {string} [options.uniqueId] Channel username alias (for TikTokLiveConnector compatibility)
    * @param {boolean} [options.pollViewers=true] Enable continuous polling of live viewer count
    * @param {number} [options.viewerIntervalMs=5000] Interval for polling live viewers (default 5000ms)
    * @param {number} [options.chatIntervalMs] Override chat polling interval (defaults to YouTube recommendation)
@@ -37,7 +39,13 @@ class YouTubeLiveConnector extends EventEmitter {
       options = { url: options };
     }
 
-    this.initialUrl = options.url || options.liveId || options.channel || null;
+    let rawInput = options.url || options.liveId || options.channel || options.username || options.uniqueId || null;
+    if (typeof rawInput === 'string') {
+      rawInput = rawInput.trim();
+    }
+
+    this.initialUrl = rawInput;
+    this.username = options.username || options.uniqueId || (typeof rawInput === 'string' && rawInput.startsWith('@') ? rawInput : null);
     this.pollViewersEnabled = options.pollViewers !== false;
     this.viewerIntervalMs = options.viewerIntervalMs || 5000;
     this.chatIntervalOverride = options.chatIntervalMs || null;
@@ -68,7 +76,7 @@ class YouTubeLiveConnector extends EventEmitter {
 
   /**
    * Connect to YouTube Live
-   * @param {string} [url] Optional YouTube Live URL or Video ID
+   * @param {string} [url] Optional YouTube Live URL, Video ID, or Channel Username e.g. "@username"
    * @returns {Promise<object>} Returns streamInfo
    */
   async connect(url) {
@@ -76,9 +84,9 @@ class YouTubeLiveConnector extends EventEmitter {
       throw new Error('Connector is already connected. Call disconnect() first.');
     }
 
-    const targetUrl = url || this.initialUrl;
+    const targetUrl = url ? (typeof url === 'string' ? url.trim() : url) : this.initialUrl;
     if (!targetUrl) {
-      throw new Error('No YouTube URL or Video ID provided.');
+      throw new Error('No YouTube URL, Video ID, or Channel Username provided.');
     }
 
     try {
