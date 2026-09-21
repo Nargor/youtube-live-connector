@@ -48,12 +48,32 @@ console.log('🔑 ตรวจพบ NPM Token จาก .env เรียบร
 const npmrcContent = `//registry.npmjs.org/:_authToken=${token}\nregistry=https://registry.npmjs.org/\n`;
 fs.writeFileSync(NPMRC_PATH, npmrcContent, 'utf8');
 
+const pkg = require('../package.json');
+
 // Check for OTP flag from CLI arguments e.g. `npm run release -- --otp=123456` or `process.env.OTP`
 const otpArg = process.argv.find(a => a.startsWith('--otp=')) || (process.env.OTP ? `--otp=${process.env.OTP}` : '');
 
+// Check for --tag flag from CLI arguments, or automatically infer for prerelease versions (e.g. 1.0.4-beta -> --tag beta)
+let tagArg = '';
+const explicitTag = process.argv.find(a => a.startsWith('--tag='));
+if (explicitTag) {
+  tagArg = explicitTag;
+} else if (process.argv.includes('--tag')) {
+  const idx = process.argv.indexOf('--tag');
+  if (process.argv[idx + 1]) {
+    tagArg = `--tag ${process.argv[idx + 1]}`;
+  }
+} else if (pkg.version && pkg.version.includes('-')) {
+  // Prerelease version e.g. "1.0.4-beta" -> infer tag "beta"
+  const prereleaseTag = pkg.version.split('-')[1].split('.')[0].replace(/[^a-zA-Z0-9_-]/g, '') || 'beta';
+  tagArg = `--tag ${prereleaseTag}`;
+}
+
+const publishCmd = ['npm publish', tagArg, otpArg].filter(Boolean).join(' ');
+
 try {
-  console.log(`📦 กำลังรัน npm publish ${otpArg ? '(with OTP)' : ''}...`);
-  execSync(`npm publish ${otpArg}`.trim(), {
+  console.log(`📦 กำลังรัน ${publishCmd}...`);
+  execSync(publishCmd, {
     cwd: path.join(__dirname, '..'),
     stdio: 'inherit',
     env: {
