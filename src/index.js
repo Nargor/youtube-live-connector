@@ -15,6 +15,8 @@ const { parseInitialStreamInfo, parseUpdatedMetadataActions } = require('./parse
 const { parseEmojiReactions } = require('./parsers/reactionParser');
 const { parseViewerCount, parsePrice, parseBadges, extractRunText } = require('./utils/helpers');
 
+const handlers = require('./handlers');
+
 // Support both `const YouTubeLiveConnector = require('...')`
 // AND `const { YouTubeLiveConnector } = require('...')`
 YouTubeLiveConnector.YouTubeLiveConnector = YouTubeLiveConnector;
@@ -38,5 +40,17 @@ YouTubeLiveConnector.parseViewerCount = parseViewerCount;
 YouTubeLiveConnector.parsePrice = parsePrice;
 YouTubeLiveConnector.parseBadges = parseBadges;
 YouTubeLiveConnector.extractRunText = extractRunText;
+
+// Export OOP Handler classes
+YouTubeLiveConnector.BaseHandler = handlers.BaseHandler;
+YouTubeLiveConnector.ChatHandler = handlers.ChatHandler;
+YouTubeLiveConnector.GiftHandler = handlers.GiftHandler;
+YouTubeLiveConnector.LikeHandler = handlers.LikeHandler;
+YouTubeLiveConnector.ReactionHandler = handlers.ReactionHandler;
+YouTubeLiveConnector.ViewerHandler = handlers.ViewerHandler;
+YouTubeLiveConnector.EngagementHandler = handlers.EngagementHandler;
+YouTubeLiveConnector.StreamLifecycleHandler = handlers.StreamLifecycleHandler;
+YouTubeLiveConnector.ActionPanelHandler = handlers.ActionPanelHandler;
+YouTubeLiveConnector.HandlerRegistry = handlers.HandlerRegistry;
 
 module.exports = YouTubeLiveConnector;

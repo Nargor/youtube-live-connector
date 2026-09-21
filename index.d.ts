@@ -269,4 +269,56 @@ export declare function parseUpdatedMetadataActions(actions: any[]): any;
 export declare function parseViewerCount(str: string): number;
 export declare function parsePrice(text: string): { amount: number; currency: string; raw: string };
 
+export declare class BaseHandler {
+  connector: YouTubeLiveConnector;
+  constructor(connector: YouTubeLiveConnector);
+  emit(event: string, ...args: any[]): boolean;
+  isDuplicate(id: string): boolean;
+  handleAction(action: any, context?: any): boolean;
+  handleMetadata(updates: any, context?: any): void;
+  handleFrameworkUpdate(mutations: any[], context?: any): void;
+  reset(): void;
+}
+
+export declare class ChatHandler extends BaseHandler {}
+export declare class GiftHandler extends BaseHandler {}
+export declare class LikeHandler extends BaseHandler {
+  lastLikeCount: number | null;
+  initialize(likeCount: number, likeCountDisplay: string): void;
+}
+export declare class ReactionHandler extends BaseHandler {
+  lastReactionUpdateTimeUsec: string | null;
+}
+export declare class ViewerHandler extends BaseHandler {
+  emitViewers(viewerCount: number, viewerCountDisplay: string): void;
+  initialize(viewerCount: number, viewerCountDisplay: string): void;
+}
+export declare class EngagementHandler extends BaseHandler {}
+export declare class StreamLifecycleHandler extends BaseHandler {
+  hasEnded: boolean;
+  chatEndRetries: number;
+  maxChatEndRetries: number;
+  handleChatContinuation(nextContinuation: string | null): boolean;
+  handleStreamEnded(reason?: string): void;
+}
+export declare class ActionPanelHandler extends BaseHandler {}
+
+export declare class HandlerRegistry {
+  connector: YouTubeLiveConnector;
+  chat: ChatHandler;
+  gift: GiftHandler;
+  like: LikeHandler;
+  reaction: ReactionHandler;
+  viewer: ViewerHandler;
+  engagement: EngagementHandler;
+  lifecycle: StreamLifecycleHandler;
+  actionPanel: ActionPanelHandler;
+  constructor(connector: YouTubeLiveConnector);
+  dispatchAction(action: any, context?: any): boolean;
+  dispatchActions(actions: any[], context?: any): void;
+  dispatchMetadata(updates: any, context?: any): void;
+  dispatchFramework(mutations: any[], context?: any): void;
+  reset(): void;
+}
+
 export default YouTubeLiveConnector;

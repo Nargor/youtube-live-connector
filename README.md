@@ -320,6 +320,64 @@ node examples/full-listener.js https://www.youtube.com/watch?v=YOUR_LIVE_ID
 
 ---
 
+## สถาปัตยกรรมภายใน OOP (สำหรับผู้พัฒนา)
+
+ไลบรารีนี้ถูกออกแบบด้วยแนวทาง **Object-Oriented Programming (1 Event 1 ไฟล์)** เพื่อให้ง่ายต่อการดูแลและขยายในอนาคต
+
+```
+src/
+├── handlers/                         ← ระบบ Event แยกเป็นคลาสตาม Feature
+│   ├── BaseHandler.js                # คลาสแม่ base สำหรับทุก Handler
+│   ├── ChatHandler.js                # ระบบคอมเมนต์/แชท → event 'chat'
+│   ├── GiftHandler.js                # ระบบของขวัญทั้งหมด → events 'gift', 'superchat', 'jewelsGift' ฯลฯ
+│   ├── LikeHandler.js                # ระบบไลค์ + คำนวณส่วนต่าง → event 'like'
+│   ├── ReactionHandler.js            # ระบบ Emoji Fountain → events 'reaction', 'reactions'
+│   ├── ViewerHandler.js              # ระบบคนดูสด → events 'viewers', 'roomUser'
+│   ├── EngagementHandler.js          # ระบบติดตาม/ประกาศ → events 'subscribe', 'follow', 'engagement'
+│   ├── StreamLifecycleHandler.js     # ระบบสถานะสตรีม → events 'streamEnded', 'chatEnded', 'title'
+│   ├── ActionPanelHandler.js         # ระบบ Pinned/Polls → event 'actionPanel'
+│   └── index.js                      # HandlerRegistry รวบรวมทุก Handler
+├── parsers/                          ← ระบบแปลงข้อมูลดิบจาก YouTube InnerTube API
+├── services/                         ← HTTP Client และ URL Resolver
+├── utils/                            ← ฟังก์ชัน Utility (parseViewerCount ฯลฯ)
+└── YouTubeLiveConnector.js           ← Main Orchestrator (Facade) ควบคุม Network Polling
+```
+
+### วิธีเพิ่ม Event หรือระบบใหม่ในอนาคต
+
+ตัวอย่าง: เพิ่มระบบ "Quiz/Survey" ให้จับ Action ใหม่จาก YouTube
+
+```javascript
+// src/handlers/QuizHandler.js
+const BaseHandler = require('./BaseHandler');
+
+class QuizHandler extends BaseHandler {
+  handleAction(action, context = {}) {
+    const item = action.addChatItemAction?.item;
+    if (!item?.liveChatSurveyRenderer) return false;
+
+    const quizData = parseQuiz(item.liveChatSurveyRenderer); // parser ของคุณ
+    this.emit('quiz', quizData);
+    return true;
+  }
+}
+
+module.exports = QuizHandler;
+```
+
+จากนั้นเพิ่มใน `src/handlers/index.js`:
+```javascript
+const QuizHandler = require('./QuizHandler');
+
+// ใน HandlerRegistry constructor:
+this.quiz = new QuizHandler(connector);
+this.actionHandlers.push(this.quiz);  // เพิ่มเข้า pipeline อัตโนมัติ
+```
+
+**เพียงเท่านี้ก็เสร็จ!** ไม่ต้องแก้ไขไฟล์อื่นเพิ่มเติม
+
+---
+
 ## License
 
 MIT License

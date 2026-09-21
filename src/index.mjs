@@ -13,6 +13,19 @@ import { parseInitialStreamInfo, parseUpdatedMetadataActions } from './parsers/m
 import { parseEmojiReactions } from './parsers/reactionParser.js';
 import { parseViewerCount, parsePrice, parseBadges, extractRunText } from './utils/helpers.js';
 
+import {
+  BaseHandler,
+  ChatHandler,
+  GiftHandler,
+  LikeHandler,
+  ReactionHandler,
+  ViewerHandler,
+  EngagementHandler,
+  StreamLifecycleHandler,
+  ActionPanelHandler,
+  HandlerRegistry
+} from './handlers/index.js';
+
 export {
   YouTubeLiveConnector,
   resolveVideoId,
@@ -31,7 +44,17 @@ export {
   parseViewerCount,
   parsePrice,
   parseBadges,
-  extractRunText
+  extractRunText,
+  BaseHandler,
+  ChatHandler,
+  GiftHandler,
+  LikeHandler,
+  ReactionHandler,
+  ViewerHandler,
+  EngagementHandler,
+  StreamLifecycleHandler,
+  ActionPanelHandler,
+  HandlerRegistry
 };
 
 export default YouTubeLiveConnector;
