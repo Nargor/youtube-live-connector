@@ -325,6 +325,29 @@ test('parseUpdatedMetadataActions - detects active vs ended stream', () => {
   const endedResultDateText = parseUpdatedMetadataActions(endedActionsDateText);
   assert.equal(endedResultDateText.isLive, false);
   assert.equal(endedResultDateText.streamEndedDateText, 'Streamed live on Sep 19, 2026');
+
+  // Active stream with both updateViewershipAction and updateDateTextAction ("Started streaming...")
+  const activeActionsWithStartedDate = [
+    {
+      updateViewershipAction: {
+        viewCount: {
+          videoViewCountRenderer: {
+            viewCount: { simpleText: '5,678 watching now' },
+            isLive: true
+          }
+        }
+      }
+    },
+    {
+      updateDateTextAction: {
+        dateText: { simpleText: 'Started streaming on Sep 23, 2026' }
+      }
+    }
+  ];
+  const activeWithStartedResult = parseUpdatedMetadataActions(activeActionsWithStartedDate);
+  assert.equal(activeWithStartedResult.viewerCount, 5678);
+  assert.equal(activeWithStartedResult.isLive, true);
+  assert.equal(activeWithStartedResult.streamEndedDateText, undefined);
 });
 
 test('parseInitialStreamInfo - detects active vs ended stream', () => {

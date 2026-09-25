@@ -52,7 +52,12 @@ function parseInitialStreamInfo(ytInitialData, videoId) {
           const vc = vcRenderer.viewCount;
           result.viewerCountDisplay = vc.runs ? vc.runs.map(r => r.text).join('') : (vc.simpleText || '');
           result.viewerCount = parseViewerCount(result.viewerCountDisplay);
-          result.isLive = vcRenderer.isLive === true;
+          const isWatching = /watching|waiting|คนกำลังดู|กำลังรอ/i.test(result.viewerCountDisplay);
+          if (vcRenderer.isLive === true || isWatching) {
+            result.isLive = true;
+          } else if (vcRenderer.isLive === false || (/views|ครั้ง/i.test(result.viewerCountDisplay) && !isWatching)) {
+            result.isLive = false;
+          }
         }
 
         // Like count from primary info buttons
@@ -117,8 +122,13 @@ function parseUpdatedMetadataActions(actions) {
         const display = vc?.runs ? vc.runs.map(r => r.text).join('') : (vc?.simpleText || '');
         updates.viewerCountDisplay = display;
         updates.viewerCount = parseViewerCount(display);
-        // isLive must be explicitly true — undefined (ended stream) → false
-        updates.isLive = vcRenderer.isLive === true;
+
+        const isWatching = /watching|waiting|คนกำลังดู|กำลังรอ/i.test(display);
+        if (vcRenderer.isLive === true || isWatching) {
+          updates.isLive = true;
+        } else if (vcRenderer.isLive === false || (/views|ครั้ง/i.test(display) && !isWatching)) {
+          updates.isLive = false;
+        }
       }
     }
 
@@ -136,13 +146,21 @@ function parseUpdatedMetadataActions(actions) {
       }
     }
 
-    // updateDateTextAction only appears after stream has ended
-    // e.g. { updateDateTextAction: { dateText: { simpleText: "Streamed live on Sep 19, 2026" } } }
+    // updateDateTextAction appears on active ("Started streaming...") and ended ("Streamed live on...") streams
     if (a.updateDateTextAction) {
-      updates.isLive = false;
       const dateText = a.updateDateTextAction.dateText;
-      if (dateText) {
-        updates.streamEndedDateText = dateText.simpleText || extractRunText(dateText).text || '';
+      const rawDateText = dateText ? (dateText.simpleText || extractRunText(dateText).text || '') : '';
+      updates.dateText = rawDateText;
+
+      const isPastStream = /streamed\s+live|สตรีมสดเมื่อ/i.test(rawDateText) ||
+                           (/streamed/i.test(rawDateText) && !/started/i.test(rawDateText));
+
+      if (isPastStream) {
+        // Only mark ended if updates.isLive is not already confirmed true by watching/waiting
+        if (updates.isLive !== true) {
+          updates.isLive = false;
+        }
+        updates.streamEndedDateText = rawDateText;
       }
     }
   }

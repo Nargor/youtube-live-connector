@@ -148,7 +148,7 @@ class InnertubeService {
 
     const cont = liveChatRenderer?.continuations?.[0];
     if (cont) {
-      const data = cont.invalidationContinuationData || cont.timedContinuationData;
+      const data = cont.invalidationContinuationData || cont.timedContinuationData || cont.reloadContinuationData;
       if (data) {
         continuation = data.continuation;
         if (data.timeoutMs) timeoutMs = data.timeoutMs;
@@ -191,7 +191,7 @@ class InnertubeService {
 
     const cont = lcc?.continuations?.[0];
     if (cont) {
-      const data = cont.invalidationContinuationData || cont.timedContinuationData;
+      const data = cont.invalidationContinuationData || cont.timedContinuationData || cont.reloadContinuationData;
       if (data) {
         nextContinuation = data.continuation;
         if (data.timeoutMs) timeoutMs = data.timeoutMs;
