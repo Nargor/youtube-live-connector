@@ -44,7 +44,7 @@
     "event-emitter"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "AGPL-3.0 license",
   "engines": {
     "node": ">=18.0.0"
   },
