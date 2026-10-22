@@ -380,4 +380,4 @@ this.actionHandlers.push(this.quiz);  // เพิ่มเข้า pipeline �
 
 ## License
 
-MIT License
+AGPL-3.0-only
