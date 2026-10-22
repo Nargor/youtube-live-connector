@@ -1,7 +1,6 @@
 # youtube-live-connector
 
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **youtube-live-connector** เป็นไลบรารี Node.js สำหรับเชื่อมต่อกับ **YouTube Live** เพื่อดึงข้อมูลแชท/คอมเมนต์, ของขวัญ (Super Chat, Super Sticker, สมาชิก/Memberships, Jewels Gifts), และจำนวนคนดูสดแบบ Real-time ด้วยโครงสร้าง Event-driven ที่ใช้งานง่าย
 
