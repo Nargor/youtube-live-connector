@@ -21,16 +21,13 @@ class StreamLifecycleHandler extends BaseHandler {
   /**
    * Handle metadata updates for title and stream active state
    * @param {object} updates
-   * @param {object} context
    */
-  handleMetadata(updates, context = {}) {
-    // 1. Title change
+  handleMetadata(updates) {
     if (updates.title && this.connector.streamInfo && updates.title !== this.connector.streamInfo.title) {
       this.connector.streamInfo.title = updates.title;
       this.emit('title', { title: updates.title });
     }
 
-    // 2. Stream ended via metadata isLive: false (or updateDateTextAction)
     if (updates.isLive === false) {
       this.handleStreamEnded('Live stream has ended');
     }
@@ -43,12 +40,10 @@ class StreamLifecycleHandler extends BaseHandler {
    */
   handleChatContinuation(nextContinuation) {
     if (nextContinuation) {
-      // Valid continuation — stream chat is healthy, reset retry counter
       this.chatEndRetries = 0;
       return true;
     }
 
-    // No continuation returned — increment retry counter and emit chatEnded
     this.chatEndRetries++;
     this.emit('chatEnded', {
       videoId: this.connector.videoId,
@@ -74,13 +69,12 @@ class StreamLifecycleHandler extends BaseHandler {
       this.connector.streamInfo.isLive = false;
     }
 
-    // Stop active timers immediately
-    if (this.connector.chatTimer) {
-      clearTimeout(this.connector.chatTimer);
+    if (this.connector._clearTimers) {
+      this.connector._clearTimers();
+    } else {
+      if (this.connector.chatTimer) clearTimeout(this.connector.chatTimer);
+      if (this.connector.viewerTimer) clearTimeout(this.connector.viewerTimer);
       this.connector.chatTimer = null;
-    }
-    if (this.connector.viewerTimer) {
-      clearTimeout(this.connector.viewerTimer);
       this.connector.viewerTimer = null;
     }
 
@@ -94,9 +88,6 @@ class StreamLifecycleHandler extends BaseHandler {
     }
   }
 
-  /**
-   * Reset lifecycle state
-   */
   reset() {
     this.hasEnded = false;
     this.chatEndRetries = 0;

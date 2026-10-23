@@ -43,10 +43,9 @@ function extractJsonFromHtml(html, key) {
       else if (ch === '}' || ch === ']') {
         depth--;
         if (depth === 0) {
-          const jsonStr = html.slice(jsonStart, i + 1);
           try {
-            return JSON.parse(jsonStr);
-          } catch (e) {
+            return JSON.parse(html.slice(jsonStart, i + 1));
+          } catch {
             return null;
           }
         }
@@ -59,7 +58,7 @@ function extractJsonFromHtml(html, key) {
 
 /**
  * Extract plain text and emoji list from a YouTube runs object
- * @param {object} runsObj 
+ * @param {object|string} runsObj 
  * @returns {{ text: string, emojis: Array }}
  */
 function extractRunText(runsObj) {
@@ -79,7 +78,7 @@ function extractRunText(runsObj) {
     } else if (r.emoji) {
       const emoji = r.emoji;
       const emojiShortcut = emoji.shortcuts?.[0] || emoji.searchTerms?.[0] || '';
-      const emojiUrl = emoji.image?.thumbnails?.[emoji.image.thumbnails.length - 1]?.url || '';
+      const emojiUrl = getLastThumbnail(emoji.image?.thumbnails);
       text += emojiShortcut || (emoji.isCustomEmoji ? '[custom emoji]' : ' ');
       emojis.push({
         emojiId: emoji.emojiId || '',
@@ -95,59 +94,40 @@ function extractRunText(runsObj) {
 
 /**
  * Parse viewer count string to integer number
- * e.g. "4,532 watching now" -> 4532
- * "1.2M watching now" -> 1200000
- * "25K watching now" -> 25000
- * @param {string} str 
+ * e.g. "4,532 watching now" -> 4532, "1.2M watching now" -> 1200000, "25K watching now" -> 25000
+ * @param {string|number} str 
  * @returns {number}
  */
 function parseViewerCount(str) {
   if (!str) return 0;
   if (typeof str === 'number') return str;
 
-  // Extract the numeric portion before "watching", "views", etc.
   const match = str.match(/([\d.,]+)\s*([kKmMbB]?)/);
   if (!match) return 0;
 
-  const rawNum = match[1].replace(/,/g, '');
-  let num = parseFloat(rawNum);
+  let num = parseFloat(match[1].replace(/,/g, ''));
   if (isNaN(num)) return 0;
 
-  const multiplier = match[2].toUpperCase();
-  if (multiplier === 'K') num *= 1_000;
-  else if (multiplier === 'M') num *= 1_000_000;
-  else if (multiplier === 'B') num *= 1_000_000_000;
-
-  return Math.round(num);
+  const mult = { K: 1e3, M: 1e6, B: 1e9 }[match[2].toUpperCase()] || 1;
+  return Math.round(num * mult);
 }
 
 /**
  * Parse currency and numeric value from purchase amount text
  * e.g. "$5.00" -> { amount: 5.00, currency: "$", raw: "$5.00" }
- * "฿100.00" -> { amount: 100.00, currency: "฿", raw: "฿100.00" }
- * "€10,50" -> { amount: 10.50, currency: "€", raw: "€10,50" }
  * @param {string} text 
  * @returns {{ amount: number, currency: string, raw: string }}
  */
 function parsePrice(text) {
-  if (!text || typeof text !== 'string') {
-    return { amount: 0, currency: '', raw: '' };
-  }
+  if (!text || typeof text !== 'string') return { amount: 0, currency: '', raw: '' };
 
   const clean = text.trim();
-  const currencyMatch = clean.match(/^([^\d\s]+)/);
-  const currency = currencyMatch ? currencyMatch[1] : '';
+  const currency = clean.match(/^([^\d\s]+)/)?.[1] || '';
 
-  // Extract number (handle both dot and comma as decimal separator)
   let numStr = clean.replace(/^[^\d]+/, '').replace(/[^\d.,]/g, '');
-  if (numStr.includes(',') && !numStr.includes('.')) {
-    numStr = numStr.replace(',', '.');
-  } else {
-    numStr = numStr.replace(/,/g, '');
-  }
+  numStr = (numStr.includes(',') && !numStr.includes('.')) ? numStr.replace(',', '.') : numStr.replace(/,/g, '');
 
-  const amount = parseFloat(numStr) || 0;
-  return { amount, currency, raw: clean };
+  return { amount: parseFloat(numStr) || 0, currency, raw: clean };
 }
 
 /**
@@ -156,40 +136,88 @@ function parsePrice(text) {
  * @returns {{ isOwner: boolean, isModerator: boolean, isMember: boolean, isVerified: boolean, badges: Array }}
  */
 function parseBadges(authorBadges) {
-  const result = {
-    isOwner: false,
-    isModerator: false,
-    isMember: false,
-    isVerified: false,
-    badges: []
-  };
-
+  const result = { isOwner: false, isModerator: false, isMember: false, isVerified: false, badges: [] };
   if (!Array.isArray(authorBadges)) return result;
 
   for (const b of authorBadges) {
-    const renderer = b.liveChatAuthorBadgeRenderer;
-    if (!renderer) continue;
+    const r = b.liveChatAuthorBadgeRenderer;
+    if (!r) continue;
 
-    const label = renderer.tooltip || renderer.accessibility?.accessibilityData?.label || '';
-    const iconType = renderer.icon?.iconType || '';
-    const iconUrl = renderer.customThumbnail?.thumbnails?.[0]?.url || '';
-
-    const badgeInfo = { label, iconType, iconUrl };
-    result.badges.push(badgeInfo);
+    const label = r.tooltip || r.accessibility?.accessibilityData?.label || '';
+    const iconType = r.icon?.iconType || '';
+    const iconUrl = r.customThumbnail?.thumbnails?.[0]?.url || '';
+    result.badges.push({ label, iconType, iconUrl });
 
     const lower = label.toLowerCase();
-    if (iconType === 'OWNER' || lower.includes('owner')) {
-      result.isOwner = true;
-    } else if (iconType === 'MODERATOR' || lower.includes('moderator')) {
-      result.isModerator = true;
-    } else if (iconType === 'VERIFIED' || lower.includes('verified')) {
-      result.isVerified = true;
-    } else if (renderer.customThumbnail || lower.includes('member') || lower.includes('sponsor')) {
-      result.isMember = true;
-    }
+    if (iconType === 'OWNER' || lower.includes('owner')) result.isOwner = true;
+    else if (iconType === 'MODERATOR' || lower.includes('moderator')) result.isModerator = true;
+    else if (iconType === 'VERIFIED' || lower.includes('verified')) result.isVerified = true;
+    else if (r.customThumbnail || lower.includes('member') || lower.includes('sponsor')) result.isMember = true;
   }
 
   return result;
+}
+
+/**
+ * Get highest resolution / last thumbnail URL from an array of thumbnails
+ * @param {Array} thumbnails 
+ * @returns {string}
+ */
+function getLastThumbnail(thumbnails) {
+  return Array.isArray(thumbnails) && thumbnails.length > 0 ? thumbnails[thumbnails.length - 1].url || '' : '';
+}
+
+/**
+ * Parse microsecond timestamp to Date and numeric timestampUsec
+ * @param {string|number} usec 
+ * @returns {{ timestampUsec: number, timestamp: Date }}
+ */
+function parseTimestamp(usec) {
+  const timestampUsec = usec ? parseInt(usec, 10) : Date.now() * 1000;
+  return { timestampUsec, timestamp: new Date(Math.floor(timestampUsec / 1000)) };
+}
+
+/**
+ * Convert integer color to hex string e.g. 4286267099 -> #ffaabb
+ * @param {number|null} colorInt 
+ * @returns {string|null}
+ */
+function toHexColor(colorInt) {
+  return colorInt != null ? `#${colorInt.toString(16).padStart(6, '0')}` : null;
+}
+
+/**
+ * Parse standard author object from a YouTube renderer
+ * @param {object} renderer 
+ * @param {boolean} [defaultIsMember=false]
+ * @returns {object}
+ */
+function parseAuthor(renderer, defaultIsMember = false) {
+  const badgeInfo = parseBadges(renderer?.authorBadges);
+  return {
+    name: renderer?.authorName?.simpleText || '',
+    channelId: renderer?.authorExternalChannelId || '',
+    profilePictureUrl: getLastThumbnail(renderer?.authorPhoto?.thumbnails),
+    isOwner: badgeInfo.isOwner,
+    isModerator: badgeInfo.isModerator,
+    isMember: defaultIsMember || badgeInfo.isMember,
+    isVerified: badgeInfo.isVerified,
+    badges: badgeInfo.badges
+  };
+}
+
+/**
+ * Determine if stream is live or ended based on vcRenderer and display text
+ * @param {object} vcRenderer 
+ * @param {string} display 
+ * @returns {boolean|null} true = live, false = ended, null = undetermined
+ */
+function determineLiveStatus(vcRenderer, display) {
+  if (!vcRenderer) return null;
+  const isWatching = /watching|waiting|คนกำลังดู|กำลังรอ/i.test(display);
+  if (vcRenderer.isLive === true || isWatching) return true;
+  if (vcRenderer.isLive === false || (/views|ครั้ง/i.test(display) && !isWatching)) return false;
+  return null;
 }
 
 module.exports = {
@@ -197,5 +225,10 @@ module.exports = {
   extractRunText,
   parseViewerCount,
   parsePrice,
-  parseBadges
+  parseBadges,
+  getLastThumbnail,
+  parseTimestamp,
+  toHexColor,
+  parseAuthor,
+  determineLiveStatus
 };

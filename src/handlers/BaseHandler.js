@@ -34,6 +34,17 @@ class BaseHandler {
   }
 
   /**
+   * Extract chat item from various action formats
+   * @param {object} action
+   * @returns {object|null}
+   */
+  getActionItem(action) {
+    return action?.addChatItemAction?.item ||
+           action?.addLiveChatTickerItemAction?.item ||
+           action?.addLiveChatItemToGroupAction?.item || null;
+  }
+
+  /**
    * Process a chat action item from InnerTube live chat
    * @param {object} action The raw action object
    * @param {object} context Context object (e.g. { videoId })

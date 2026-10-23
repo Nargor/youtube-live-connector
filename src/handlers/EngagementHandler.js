@@ -8,31 +8,20 @@ const { parseViewerEngagementMessage } = require('../parsers/chatParser');
  * Handles system/engagement notices and subscriber events (events: 'engagement', 'subscribe', 'follow')
  */
 class EngagementHandler extends BaseHandler {
-  /**
-   * Process incoming action for engagement messages
-   * @param {object} action
-   * @param {object} context
-   * @returns {boolean}
-   */
-  handleAction(action, context = {}) {
-    const item = action.addChatItemAction?.item ||
-                 action.addLiveChatTickerItemAction?.item ||
-                 action.addLiveChatItemToGroupAction?.item;
-    if (!item) return false;
-
-    if (item.liveChatViewerEngagementMessageRenderer) {
-      const engagementData = parseViewerEngagementMessage(item.liveChatViewerEngagementMessageRenderer);
-      if (engagementData && !this.isDuplicate(engagementData.id)) {
-        this.emit('engagement', engagementData);
-
-        if (engagementData.isSubscribeNotice) {
+  handleAction(action) {
+    const item = this.getActionItem(action);
+    if (item?.liveChatViewerEngagementMessageRenderer) {
+      const data = parseViewerEngagementMessage(item.liveChatViewerEngagementMessageRenderer);
+      if (data && !this.isDuplicate(data.id)) {
+        this.emit('engagement', data);
+        if (data.isSubscribeNotice) {
           const subEvent = {
-            id: engagementData.id,
-            message: engagementData.message,
+            id: data.id,
+            message: data.message,
             isMembership: false,
             subType: 'engagement_notice',
-            timestamp: engagementData.timestamp,
-            raw: engagementData.raw
+            timestamp: data.timestamp,
+            raw: data.raw
           };
           this.emit('subscribe', subEvent);
           this.emit('follow', subEvent);
@@ -40,7 +29,6 @@ class EngagementHandler extends BaseHandler {
         return true;
       }
     }
-
     return false;
   }
 }

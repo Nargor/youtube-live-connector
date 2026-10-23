@@ -3,6 +3,16 @@
 const https = require('https');
 const { extractJsonFromHtml } = require('../utils/helpers');
 
+const DEFAULT_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  'Accept-Language': 'en-US,en;q=0.9'
+};
+
+function extractContinuation(cont) {
+  const data = cont?.invalidationContinuationData || cont?.timedContinuationData || cont?.reloadContinuationData;
+  return data ? { continuation: data.continuation, timeoutMs: data.timeoutMs || 3000 } : null;
+}
+
 class InnertubeService {
   /**
    * @param {object} [options]
@@ -12,7 +22,7 @@ class InnertubeService {
   constructor(options = {}) {
     this.customHeaders = options.headers || {};
     this.clientVersion = options.clientVersion || '2.20260918.00.00';
-    this.apiKey = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'; // Default fallback Innertube web API key
+    this.apiKey = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
   }
 
   /**
@@ -22,11 +32,7 @@ class InnertubeService {
    */
   get(url) {
     return new Promise((resolve, reject) => {
-      const headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
-        ...this.customHeaders
-      };
+      const headers = { ...DEFAULT_HEADERS, ...this.customHeaders };
 
       https.get(url, { headers }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -57,8 +63,7 @@ class InnertubeService {
       const headers = {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
+        ...DEFAULT_HEADERS,
         ...this.customHeaders
       };
 
@@ -73,8 +78,7 @@ class InnertubeService {
         res.on('data', chunk => responseBody += chunk);
         res.on('end', () => {
           try {
-            const parsed = JSON.parse(responseBody);
-            resolve(parsed);
+            resolve(JSON.parse(responseBody));
           } catch (err) {
             reject(new Error(`Failed to parse InnerTube JSON response: ${err.message}`));
           }
@@ -89,27 +93,26 @@ class InnertubeService {
   }
 
   /**
+   * Extract API Key & Client Version from page HTML
+   * @private
+   */
+  _extractConfig(html) {
+    const keyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+    if (keyMatch) this.apiKey = keyMatch[1];
+    const verMatch = html.match(/"INNERTUBE_CLIENT_VERSION":"([^"]+)"/);
+    if (verMatch) this.clientVersion = verMatch[1];
+  }
+
+  /**
    * Fetch watch page to extract stream info, API key, and initial viewer info
    * @param {string} videoId 
    * @returns {Promise<{ ytInitialData: object|null, apiKey: string, clientVersion: string }>}
    */
   async fetchWatchPage(videoId) {
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const html = await this.get(url);
-
-    const keyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
-    if (keyMatch) {
-      this.apiKey = keyMatch[1];
-    }
-
-    const verMatch = html.match(/"INNERTUBE_CLIENT_VERSION":"([^"]+)"/);
-    if (verMatch) {
-      this.clientVersion = verMatch[1];
-    }
-
-    const ytInitialData = extractJsonFromHtml(html, 'ytInitialData');
+    const html = await this.get(`https://www.youtube.com/watch?v=${videoId}`);
+    this._extractConfig(html);
     return {
-      ytInitialData,
+      ytInitialData: extractJsonFromHtml(html, 'ytInitialData'),
       apiKey: this.apiKey,
       clientVersion: this.clientVersion
     };
@@ -118,47 +121,25 @@ class InnertubeService {
   /**
    * Fetch live chat page to extract initial chat continuation token and chat messages
    * @param {string} videoId 
-   * @returns {Promise<{ liveChatRenderer: object|null, continuation: string|null, timeoutMs: number, isDisabled: boolean }>}
+   * @returns {Promise<{ liveChatRenderer: object|null, continuation: string|null, timeoutMs: number, isDisabled: boolean, frameworkUpdates?: object }>}
    */
   async fetchLiveChatPage(videoId) {
-    const url = `https://www.youtube.com/live_chat?v=${videoId}`;
-    const html = await this.get(url);
-
-    const keyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
-    if (keyMatch) {
-      this.apiKey = keyMatch[1];
-    }
-
+    const html = await this.get(`https://www.youtube.com/live_chat?v=${videoId}`);
+    this._extractConfig(html);
     const ytInitialData = extractJsonFromHtml(html, 'ytInitialData');
 
-    // Check if chat is disabled
     const disabledMsg = ytInitialData?.contents?.messageRenderer?.text?.runs?.[0]?.text;
     if (disabledMsg && disabledMsg.toLowerCase().includes('chat is disabled')) {
-      return {
-        liveChatRenderer: null,
-        continuation: null,
-        timeoutMs: 10000,
-        isDisabled: true
-      };
+      return { liveChatRenderer: null, continuation: null, timeoutMs: 10000, isDisabled: true };
     }
 
     const liveChatRenderer = ytInitialData?.contents?.liveChatRenderer;
-    let continuation = null;
-    let timeoutMs = 3000;
-
-    const cont = liveChatRenderer?.continuations?.[0];
-    if (cont) {
-      const data = cont.invalidationContinuationData || cont.timedContinuationData || cont.reloadContinuationData;
-      if (data) {
-        continuation = data.continuation;
-        if (data.timeoutMs) timeoutMs = data.timeoutMs;
-      }
-    }
+    const contInfo = extractContinuation(liveChatRenderer?.continuations?.[0]);
 
     return {
       liveChatRenderer,
-      continuation,
-      timeoutMs,
+      continuation: contInfo?.continuation || null,
+      timeoutMs: contInfo?.timeoutMs || 3000,
       isDisabled: false,
       frameworkUpdates: ytInitialData?.frameworkUpdates || null
     };
@@ -172,36 +153,18 @@ class InnertubeService {
   async fetchLiveChatContinuation(continuationToken) {
     const url = `https://www.youtube.com/youtubei/v1/live_chat/get_live_chat?key=${this.apiKey}`;
     const payload = {
-      context: {
-        client: {
-          clientName: 'WEB',
-          clientVersion: this.clientVersion,
-          hl: 'en'
-        }
-      },
+      context: { client: { clientName: 'WEB', clientVersion: this.clientVersion, hl: 'en' } },
       continuation: continuationToken
     };
 
     const res = await this.post(url, payload);
     const lcc = res.continuationContents?.liveChatContinuation;
-
-    const actions = lcc?.actions || [];
-    let nextContinuation = null;
-    let timeoutMs = 3000;
-
-    const cont = lcc?.continuations?.[0];
-    if (cont) {
-      const data = cont.invalidationContinuationData || cont.timedContinuationData || cont.reloadContinuationData;
-      if (data) {
-        nextContinuation = data.continuation;
-        if (data.timeoutMs) timeoutMs = data.timeoutMs;
-      }
-    }
+    const contInfo = extractContinuation(lcc?.continuations?.[0]);
 
     return {
-      actions,
-      nextContinuation,
-      timeoutMs,
+      actions: lcc?.actions || [],
+      nextContinuation: contInfo?.continuation || null,
+      timeoutMs: contInfo?.timeoutMs || 3000,
       frameworkUpdates: res.frameworkUpdates || null
     };
   }
@@ -215,13 +178,7 @@ class InnertubeService {
   async fetchUpdatedMetadata(videoId, continuationToken = null) {
     const url = `https://www.youtube.com/youtubei/v1/updated_metadata?key=${this.apiKey}`;
     const payload = {
-      context: {
-        client: {
-          clientName: 'WEB',
-          clientVersion: this.clientVersion,
-          hl: 'en'
-        }
-      }
+      context: { client: { clientName: 'WEB', clientVersion: this.clientVersion, hl: 'en' } }
     };
 
     if (continuationToken) {
@@ -232,20 +189,12 @@ class InnertubeService {
     }
 
     const res = await this.post(url, payload);
-    const actions = res.actions || [];
-    let nextContinuation = null;
-    let timeoutMs = 5000;
-
     const cont = res.continuation?.timedContinuationData;
-    if (cont) {
-      nextContinuation = cont.continuation;
-      if (cont.timeoutMs) timeoutMs = cont.timeoutMs;
-    }
 
     return {
-      actions,
-      nextContinuation,
-      timeoutMs
+      actions: res.actions || [],
+      nextContinuation: cont?.continuation || null,
+      timeoutMs: cont?.timeoutMs || 5000
     };
   }
 }
